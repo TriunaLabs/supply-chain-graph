@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "proposalId": "prop-synthetic-0001",
+  "eventId": "e_1d9d215f543b9d93",
+  "sourceCommit": "0123456789abcdef0123456789abcdef01234567",
+  "packetHash": "982eb810546ba4a9b9a8aef8fae904cdce394bf3725a7ce11c97dd69d909081a",
+  "author": { "kind": "model", "label": "synthetic example" },
+  "createdAt": "2026-10-31T01:00:00Z",
+  "summary": "GHSA-xxxx-synthetic-0001 affects vulnerable-lib@1.0.2, a direct runtime dependency of web-app. OSV lists 1.0.3 as a fixed boundary. Propose upgrading the direct dependency to exactly 1.0.3 and re-scanning.",
+  "evidenceIds": ["ev_c6c4d1c16d585d71", "ev_b6db070907ba98a7"],
+  "suggestedAction": "upgrade",
+  "affectedFiles": ["package.json", "package-lock.json"],
+  "currentArtifact": { "ecosystem": "npm", "name": "vulnerable-lib", "version": "1.0.2" },
+  "targetArtifact": { "ecosystem": "npm", "name": "vulnerable-lib", "version": "1.0.3" },
+  "direct": true,
+  "rationale": "The advisory's fixed boundary for this package is 1.0.3 and the requested range ^1.0.0 admits it, so a lockfile update to 1.0.3 should take the installed version out of the affected range. The boundary is a lead from OSV, not proof that every issue is fixed.",
+  "successCriteria": [
+    "The project's test suite passes on the updated lockfile.",
+    "A fresh scan followed by enrich and evaluate --previous reports the finding as no-longer-observed after a successful OSV check, not unknown."
+  ],
+  "dependencyPath": ["web-app", "vulnerable-lib@1.0.2"],
+  "validationSteps": [
+    "Update the requested range only if ^1.0.0 does not already admit 1.0.3; otherwise refresh the lockfile entry for vulnerable-lib to 1.0.3.",
+    "Run the project's tests.",
+    "Rescan, enrich, and evaluate with --previous; confirm the OSV check succeeded for vulnerable-lib@1.0.3."
+  ],
+  "unknowns": [
+    "Whether 1.0.3 changes behaviour the project relies on; the advisory summary does not say.",
+    "Whether flaky-lib, the transitive dependency of vulnerable-lib, has advisories: its lookup failed in this snapshot."
+  ],
+  "rollbackSteps": [
+    "Revert the lockfile and manifest change in one commit.",
+    "Rescan to confirm the previous versions are back and record the finding as still-observed."
+  ],
+  "confidence": 0.6
+}

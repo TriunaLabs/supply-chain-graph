@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "proposalId": "prop-synthetic-0001",
+  "proposalHash": "9c9472002d486dff75d6f92137c2ad87cc6ce013bc55191e029a037278a019e1",
+  "packetHash": "982eb810546ba4a9b9a8aef8fae904cdce394bf3725a7ce11c97dd69d909081a",
+  "sourceCommit": "0123456789abcdef0123456789abcdef01234567",
+  "reviewer": {
+    "identity": "octocat-example",
+    "method": "github-pull-request-review",
+    "reference": "https://github.com/example/web-app/pull/1#pullrequestreview-1"
+  },
+  "decision": "approve",
+  "decidedAt": "2026-10-31T02:00:00Z",
+  "expiresAt": "2027-01-31T02:00:00Z",
+  "reason": "Synthetic example: the upgrade is a direct dependency bump inside the requested range; approved for a pull request, not for merge.",
+  "conditions": [
+    "The project test suite must pass on the branch.",
+    "A fresh scan must report the finding no-longer-observed after a successful OSV check before anyone claims it is fixed."
+  ]
+}

@@ -11,7 +11,7 @@ const command = args.shift();
 const option = (name) => { const i = args.indexOf(`--${name}`); return i < 0 ? null : args[i + 1]; };
 const options = (name) => args.flatMap((value, index) => value === `--${name}` && args[index + 1] ? [args[index + 1]] : []);
 const help = () => {
-  console.error('Usage: supply-chain.mjs init --out FILE | discover --search-root DIR [--search-root DIR] [--config FILE] --out FILE [--depth 0..8] [--max-directories N] | adopt-discovery --config FILE --discovery FILE --out FILE [--nested-locks] | set-root --config FILE --id ID --root DIR --out FILE [--label NAME] | scan --config FILE --out FILE | enrich --snapshot FILE --out FILE [--project ID] | advisory-details --snapshot FILE --out FILE | render --snapshot FILE --out FILE | diff --previous FILE --current FILE --out FILE | validate --schema NAME --file FILE | evaluate --snapshot FILE --policy FILE --out FILE [--at ISO-TIME] [--previous RESULT] | packet --result FILE --out FILE [--policy FILE] [--include LIST] [--transitions LIST] | summary --result FILE --out FILE | serve --config FILE --snapshot FILE --out HTML [--state FILE] [--port N]. Use --out - for stdout except serve. Exit codes: 1 tool or input failure, 2 usage, 3 policy gate failed.');
+  console.error('Usage: supply-chain.mjs init --out FILE | discover --search-root DIR [--search-root DIR] [--config FILE] --out FILE [--depth 0..8] [--max-directories N] | adopt-discovery --config FILE --discovery FILE --out FILE [--nested-locks] | set-root --config FILE --id ID --root DIR --out FILE [--label NAME] | scan --config FILE --out FILE | enrich --snapshot FILE --out FILE [--project ID] | advisory-details --snapshot FILE --out FILE | render --snapshot FILE --out FILE | diff --previous FILE --current FILE --out FILE | validate --schema NAME --file FILE | evaluate --snapshot FILE --policy FILE --out FILE [--at ISO-TIME] [--previous RESULT] | packet --result FILE --out FILE [--policy FILE] [--include LIST] [--transitions LIST] | check-proposal --proposal FILE --packet FILE [--out FILE] | check-decision --decision FILE --proposal FILE --packet FILE [--at ISO-TIME] [--out FILE] | summary --result FILE --out FILE | serve --config FILE --snapshot FILE --out HTML [--state FILE] [--port N]. Use --out - for stdout except serve. Exit codes: 1 tool or input failure, 2 usage, 3 policy gate failed.');
   process.exitCode = 2;
 };
 const json = async (file) => JSON.parse(await readFile(resolve(file), 'utf8'));
@@ -508,6 +508,32 @@ try {
     if (!self.valid) throw new Error(`Internal error: packet does not match its contract (${self.errors.map(problem => `${problem.path}: ${problem.message}`).slice(0, 5).join('; ')})`);
     await output(option('out'), JSON.stringify(packet, null, 2) + '\n');
     console.error(`Packet ${packet.packetId}: ${packet.items.length} items, ${packet.evidenceIds.length} evidence IDs${policy?.aliases && Object.keys(policy.aliases).length ? ', project aliases applied' : ''}`);
+  }
+  else if (command === 'check-proposal' && option('proposal') && option('packet')) {
+    const { validateNamed, loadSchema } = await import('./schema.mjs');
+    const { validate } = await import('./schema.mjs');
+    const { checkProposal } = await import('./proposal.mjs');
+    const packet = await json(option('packet')), proposal = await json(option('proposal'));
+    const packetCheck = await validateNamed('agent-packet', packet);
+    if (!packetCheck.valid) throw new Error(`The packet does not match its v1 contract (${packetCheck.errors[0].path}: ${packetCheck.errors[0].message})`);
+    const schema = await loadSchema('proposal');
+    const verdict = checkProposal(proposal, packet, { validateSchema: document => validate(schema, document) });
+    if (option('out')) await output(option('out'), JSON.stringify({ schemaVersion: 1, checkedAt: new Date().toISOString(), ...verdict }, null, 2) + '\n');
+    for (const problem of verdict.problems) console.error(`- ${problem}`);
+    console.error(verdict.ok ? `Proposal ${proposal.proposalId} cites only packet evidence (hash ${verdict.proposalHash.slice(0, 16)}…); it still needs a human decision.` : `Proposal rejected: ${verdict.problems.length} problem${verdict.problems.length === 1 ? '' : 's'}`);
+    if (!verdict.ok) process.exitCode = 1;
+  }
+  else if (command === 'check-decision' && option('decision') && option('proposal') && option('packet')) {
+    const { loadSchema, validate } = await import('./schema.mjs');
+    const { checkDecision } = await import('./proposal.mjs');
+    const decision = await json(option('decision')), proposal = await json(option('proposal')), packet = await json(option('packet'));
+    const schema = await loadSchema('decision');
+    const verdict = checkDecision(decision, proposal, packet, { now: option('at') ? new Date(option('at')) : new Date(), validateSchema: document => validate(schema, document) });
+    for (const problem of verdict.problems) console.error(`- ${problem}`);
+    for (const warning of verdict.warnings || []) console.error(`! ${warning}`);
+    if (option('out')) await output(option('out'), JSON.stringify({ schemaVersion: 1, checkedAt: new Date().toISOString(), ...verdict }, null, 2) + '\n');
+    console.error(verdict.authorized ? `Authorized: ${decision.decision} by ${decision.reviewer.identity} via ${decision.reviewer.method}, valid until ${decision.expiresAt}, bound to proposal ${decision.proposalId} at ${decision.sourceCommit}` : `Not authorized (${verdict.decision || 'invalid'}${verdict.expired ? ', expired' : ''})`);
+    if (!verdict.authorized) process.exitCode = 1;
   }
   else if (command === 'summary' && option('result') && option('out')) {
     const { summarize } = await import('./summary.mjs');

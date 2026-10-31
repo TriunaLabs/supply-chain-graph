@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TriunaLabs/supply-chain-graph/contracts/decision.v1.schema.json",
+  "title": "Supply Chain Graph human decision v1",
+  "description": "A record of a human decision about one proposal, bound to the exact proposal hash, packet hash, and source commit. A changed proposal or commit needs a new decision. The record describes where the authorization happened; a JSON file written by the same untrusted job is not itself a security boundary.",
+  "type": "object",
+  "required": ["schemaVersion", "proposalId", "proposalHash", "packetHash", "sourceCommit", "reviewer", "decision", "decidedAt", "expiresAt", "reason"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "proposalId": { "type": "string", "minLength": 1 },
+    "proposalHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "packetHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+    "reviewer": {
+      "type": "object",
+      "required": ["identity", "method"],
+      "additionalProperties": false,
+      "properties": {
+        "identity": { "type": "string", "minLength": 1, "description": "The authenticated reviewer as the authorizing system knows them, for example a GitHub login." },
+        "method": { "type": "string", "enum": ["github-pull-request-review", "github-protected-environment", "manual-record"], "description": "Where the authorization happened. manual-record is a note, not a boundary." },
+        "reference": { "type": ["string", "null"], "description": "Review, approval, or deployment URL or ID in the authorizing system." }
+      }
+    },
+    "decision": { "type": "string", "enum": ["approve", "reject", "needs-changes"] },
+    "decidedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "conditions": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 500 }, "description": "Conditions the reviewer attached, for example which tests must pass before merge." }
+  }
+}

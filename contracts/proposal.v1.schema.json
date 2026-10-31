@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TriunaLabs/supply-chain-graph/contracts/proposal.v1.schema.json",
+  "title": "Supply Chain Graph remediation proposal v1",
+  "description": "A structured proposal from a model or a person for one packet item. It can only cite evidence IDs, files, artifacts, and advisory IDs that exist in the packet it names; check-proposal rejects anything else. A proposal is a suggestion: deterministic policy decides actionability and a human authorizes any write.",
+  "type": "object",
+  "required": ["schemaVersion", "proposalId", "eventId", "sourceCommit", "packetHash", "summary", "evidenceIds", "suggestedAction", "affectedFiles", "currentArtifact", "targetArtifact", "dependencyPath", "validationSteps", "unknowns", "rollbackSteps", "confidence"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "proposalId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{3,79}$" },
+    "eventId": { "type": "string", "pattern": "^e_[0-9a-f]{16}$" },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+    "packetHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "author": { "type": "object", "additionalProperties": false, "properties": { "kind": { "type": "string", "enum": ["model", "person", "tool"] }, "label": { "type": "string", "maxLength": 200 } } },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "evidenceIds": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^ev_[0-9a-f]{16}$" } },
+    "suggestedAction": { "type": "string", "enum": ["upgrade", "replace", "pin", "remove", "investigate", "no-change"] },
+    "affectedFiles": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+    "currentArtifact": { "$ref": "#/$defs/artifact" },
+    "targetArtifact": { "anyOf": [{ "$ref": "#/$defs/artifact" }, { "type": "null" }] },
+    "direct": { "type": ["boolean", "null"], "description": "Whether the change edits a direct dependency (true) or must reach a transitive one through its parent (false)." },
+    "rationale": { "type": "string", "maxLength": 2000, "description": "Why this change is expected to help. An OSV fixed boundary or npm latest tag is a lead, not proof." },
+    "successCriteria": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 500 }, "description": "What would demonstrate success: tests, a fresh comparable scan, a specific coverage state." },
+    "dependencyPath": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "validationSteps": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+    "unknowns": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+    "rollbackSteps": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": ["ecosystem", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "ecosystem": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": ["string", "null"] },
+        "ref": { "type": ["string", "null"], "description": "Exact Git ref or commit when the artifact is not a registry version." }
+      }
+    }
+  }
+}
