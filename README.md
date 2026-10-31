@@ -11,7 +11,7 @@ node scripts/supply-chain.mjs scan --config examples/portfolio.example.json --ou
 node scripts/supply-chain.mjs render --snapshot local/snapshot.json --out local/dashboard.html
 ```
 
-The example config points at a tiny fixture. These `local/` commands are for the synthetic demo only; write every real config and scan output to a private location outside this repo. A project without a known root can use `"root": null`; it will appear as an unavailable coverage source. The `local/` output directory is ignored by Git. Open `local/dashboard.html` in a browser, or inspect the [safe demo dashboard](examples/demo-dashboard.html).
+The example config points at a tiny fixture. These `local/` commands are for the synthetic demo only; write every real config and scan output to a private location outside this repo. A project without a known root can use `"root": null`; it will appear as an unavailable coverage source. The `local/` output directory is ignored by Git. Open `local/dashboard.html` in a browser, or inspect the [safe demo dashboard](examples/demo-dashboard.html). The fixture is a subdirectory of this clone, so any Git branch and commit shown for Sample App belong to the enclosing Supply Chain Graph repository, not a separate Sample App repository.
 
 ## Scan one real project on Windows
 
@@ -114,7 +114,7 @@ The dashboard has four network lenses: **JavaScript requests** connects manifest
 
 Suggested steps in the inspector are leads for review, not executed remediation. The local server lets you mark a package node or coverage finding **open**, **investigating**, or **acknowledged** and attach a note. Only a later scan can establish that a finding is no longer observed; acknowledgement does not resolve it. A notification workflow still needs stable cross-scan finding identity, ownership, suppression with expiry, deduplicated delivery, and a chosen channel. The current `diff` emits candidate events but does not send them. npm workspaces, unscanned nested manifests, other package ecosystems, live GitHub drift, runtime applicability, and tested fixed-version selection remain coverage work. See [architecture](references/architecture.md) for the implementation boundary.
 
-Run the included parser, diff, and graph checks with `node --test tests/*.test.mjs`.
+Run the included parser, diff, and graph checks from the repository root with `node --test`. This uses test-file discovery and works without relying on shell or Node glob expansion.
 
 ## Security and automation
 
