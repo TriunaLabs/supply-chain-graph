@@ -20,7 +20,7 @@ The graph and event JSON are useful inputs to an agent that answers “which pro
 
 ## CI placement
 
-Run per-repository collection on a private runner or in that repository's CI with read-only checkout permissions. Keep real JSON and HTML out of public workflow artifacts, logs, and Pages builds. A portfolio aggregator can receive approved per-repository packets and update a private dashboard. Keep the public skill's own CI limited to its synthetic fixtures and tests. If using GitHub Actions, declare minimal GITHUB_TOKEN permissions for each job; a later issue or pull-request job should be isolated from the read-only scan job.
+Run per-repository collection on a private runner or in that repository's CI with read-only checkout permissions. Keep real JSON and HTML out of public workflow artifacts, logs, and Pages builds. A portfolio aggregator can receive approved per-repository packets and update a private dashboard. Keep the public skill's own CI limited to its synthetic fixtures and tests. If using GitHub Actions, declare minimal GITHUB_TOKEN permissions for each job; a later issue or pull-request job should be isolated from the read-only scan job. `examples/ci/scan.yml` and `ci-setup.md` are the copyable starting point: pinned actions, a pinned skill commit, read-only token, private `$RUNNER_TEMP` output, an aggregate-only job summary via `summary --result FILE --out -`, opt-in enrichment on dispatch only, and distinct exit codes for tool failure (1) and a configured gate (3).
 
 ## Contracts and deterministic policy
 

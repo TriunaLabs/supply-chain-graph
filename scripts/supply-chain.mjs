@@ -11,7 +11,7 @@ const command = args.shift();
 const option = (name) => { const i = args.indexOf(`--${name}`); return i < 0 ? null : args[i + 1]; };
 const options = (name) => args.flatMap((value, index) => value === `--${name}` && args[index + 1] ? [args[index + 1]] : []);
 const help = () => {
-  console.error('Usage: supply-chain.mjs init --out FILE | discover --search-root DIR [--search-root DIR] [--config FILE] --out FILE [--depth 0..8] [--max-directories N] | adopt-discovery --config FILE --discovery FILE --out FILE [--nested-locks] | set-root --config FILE --id ID --root DIR --out FILE [--label NAME] | scan --config FILE --out FILE | enrich --snapshot FILE --out FILE [--project ID] | advisory-details --snapshot FILE --out FILE | render --snapshot FILE --out FILE | diff --previous FILE --current FILE --out FILE | validate --schema NAME --file FILE | evaluate --snapshot FILE --policy FILE --out FILE [--at ISO-TIME] [--previous RESULT] | serve --config FILE --snapshot FILE --out HTML [--state FILE] [--port N]. Use --out - for stdout except serve. Exit codes: 1 tool or input failure, 2 usage, 3 policy gate failed.');
+  console.error('Usage: supply-chain.mjs init --out FILE | discover --search-root DIR [--search-root DIR] [--config FILE] --out FILE [--depth 0..8] [--max-directories N] | adopt-discovery --config FILE --discovery FILE --out FILE [--nested-locks] | set-root --config FILE --id ID --root DIR --out FILE [--label NAME] | scan --config FILE --out FILE | enrich --snapshot FILE --out FILE [--project ID] | advisory-details --snapshot FILE --out FILE | render --snapshot FILE --out FILE | diff --previous FILE --current FILE --out FILE | validate --schema NAME --file FILE | evaluate --snapshot FILE --policy FILE --out FILE [--at ISO-TIME] [--previous RESULT] | summary --result FILE --out FILE | serve --config FILE --snapshot FILE --out HTML [--state FILE] [--port N]. Use --out - for stdout except serve. Exit codes: 1 tool or input failure, 2 usage, 3 policy gate failed.');
   process.exitCode = 2;
 };
 const json = async (file) => JSON.parse(await readFile(resolve(file), 'utf8'));
@@ -495,6 +495,10 @@ try {
     await output(option('out'), JSON.stringify(result, null, 2) + '\n');
     console.error(`Policy ${result.policy.id}@${result.policy.version}: ${result.summary.findings} findings (${result.summary.actionable} actionable, ${result.summary.needsReview} need review, ${result.summary.informational} informational) · scan ${result.freshness.state} · gate ${result.gate.status}${result.transitions ? ` · ${result.transitions.length} transitions` : ''}`);
     if (result.gate.status === 'fail') { console.error(`Gate failed on ${result.gate.failing.length} finding${result.gate.failing.length === 1 ? '' : 's'} (failOn: ${result.gate.failOn.join(', ')})`); process.exitCode = 3; }
+  }
+  else if (command === 'summary' && option('result') && option('out')) {
+    const { summarize } = await import('./summary.mjs');
+    await output(option('out'), summarize(await json(option('result'))));
   }
   else if (command === 'render' && option('snapshot') && option('out')) {
     await output(option('out'), await renderHtml(await json(option('snapshot'))));

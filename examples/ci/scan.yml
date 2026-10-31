@@ -1,0 +1,118 @@
+# Supply Chain Graph: scan this repository's own checkout and evaluate a policy.
+#
+# Copy this file into YOUR repository as .github/workflows/supply-chain-scan.yml and read
+# references/ci-setup.md in the skill repository first. Defaults are deliberately conservative:
+#   - scans only this checkout, never the runner's home directory or other workspaces;
+#   - makes no network calls to OSV or the npm registry unless you dispatch it with enrich=true;
+#   - keeps the config, snapshot, policy result, and HTML under $RUNNER_TEMP (private to the job) and
+#     writes only aggregate counts to the job summary: no paths, project labels, or package names;
+#   - runs with a read-only token and never uses pull_request_target.
+#
+# Pin SKILL_REF to a commit SHA of https://github.com/TriunaLabs/supply-chain-graph that you have reviewed.
+# Do not point it at a branch. Update it deliberately, the same way you would bump a pinned action.
+
+name: Supply chain scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      enrich:
+        description: "Query OSV and the public npm registry. Sends resolved npm package names and versions to OSV and names to npm."
+        type: boolean
+        default: false
+  pull_request:
+  # Optional triggers; uncomment after the first successful dispatch.
+  # push:
+  #   branches: [main]
+  # schedule:
+  #   - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  SKILL_REF: REPLACE_WITH_REVIEWED_COMMIT_SHA
+  SKILL_DIR: ${{ github.workspace }}/.supply-chain-graph-skill
+  SCG_PRIVATE: ${{ runner.temp }}/supply-chain-graph
+  # A JSON policy in your repository; the skill's reporting-only default is used when this file is absent.
+  SCG_POLICY_FILE: .github/supply-chain-policy.json
+
+jobs:
+  scan:
+    name: Scan and evaluate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Check out the skill at the pinned commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: TriunaLabs/supply-chain-graph
+          ref: ${{ env.SKILL_REF }}
+          path: .supply-chain-graph-skill
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+
+      - name: Configure one project root (private)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$SCG_PRIVATE"
+          project_id="$(printf '%s' "${GITHUB_REPOSITORY##*/}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g')"
+          [ -n "$project_id" ] || project_id="project"
+          node "$SKILL_DIR/scripts/supply-chain.mjs" init --out "$SCG_PRIVATE/portfolio.json"
+          node "$SKILL_DIR/scripts/supply-chain.mjs" set-root --config "$SCG_PRIVATE/portfolio.json" --id "$project_id" --root "$GITHUB_WORKSPACE" --out "$SCG_PRIVATE/portfolio.with-root.json"
+
+      - name: Scan the checkout (local only, no network)
+        shell: bash
+        run: node "$SKILL_DIR/scripts/supply-chain.mjs" scan --config "$SCG_PRIVATE/portfolio.with-root.json" --out "$SCG_PRIVATE/snapshot.json"
+
+      - name: Enrich with OSV and npm metadata (opt-in, dispatch only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.enrich }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$SKILL_DIR/scripts/supply-chain.mjs" enrich --snapshot "$SCG_PRIVATE/snapshot.json" --out "$SCG_PRIVATE/enriched.json"
+          node "$SKILL_DIR/scripts/supply-chain.mjs" advisory-details --snapshot "$SCG_PRIVATE/enriched.json" --out "$SCG_PRIVATE/snapshot.json"
+
+      - name: Evaluate the policy
+        id: evaluate
+        shell: bash
+        run: |
+          set -uo pipefail
+          policy="$SKILL_DIR/contracts/policy.default.json"
+          if [ -f "$GITHUB_WORKSPACE/$SCG_POLICY_FILE" ]; then policy="$GITHUB_WORKSPACE/$SCG_POLICY_FILE"; fi
+          node "$SKILL_DIR/scripts/supply-chain.mjs" evaluate --snapshot "$SCG_PRIVATE/snapshot.json" --policy "$policy" --out "$SCG_PRIVATE/policy-result.json"
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          case "$status" in
+            0) echo "Evaluated; gate passed or is not configured." ;;
+            3) echo "::error::The configured policy gate failed. Details are in the private policy result on the runner, not in this log." ;;
+            *) echo "::error::Scan or evaluation failed (exit $status). This is a tool or input failure, not a policy decision." ;;
+          esac
+          exit "$status"
+
+      - name: Write an aggregate-only job summary
+        if: ${{ always() && steps.evaluate.outputs.status != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f "$SCG_PRIVATE/policy-result.json" ]; then
+            node "$SKILL_DIR/scripts/supply-chain.mjs" summary --result "$SCG_PRIVATE/policy-result.json" --out - >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No policy result was produced; see the evaluate step." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Raw output stays in $RUNNER_TEMP and is discarded with the job. To compare runs with `diff`,
+      # store the accepted snapshot and policy result in private storage you control (a private
+      # repository, an encrypted bucket, or a retention-limited private artifact) and pass it back in
+      # as --previous. Never publish them as public artifacts or to Pages. See references/ci-setup.md.

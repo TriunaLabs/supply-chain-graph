@@ -1,0 +1,57 @@
+# The skill's own CI. It runs the test suite and validates the synthetic contracts and examples.
+# It never scans a real portfolio, uploads artifacts, or calls OSV, the npm registry, a webhook, or an OTLP endpoint:
+# the tests use fake fetch implementations and fixtures only.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests and contracts (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Run the test suite (includes demo freshness)
+        run: node --test
+
+      - name: Validate synthetic contracts and examples
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/supply-chain.mjs validate --schema snapshot --file contracts/examples/enriched-snapshot.json
+          node scripts/supply-chain.mjs validate --schema snapshot --file examples/demo-snapshot.json
+          node scripts/supply-chain.mjs validate --schema policy --file contracts/policy.default.json
+          node scripts/supply-chain.mjs validate --schema policy-result --file contracts/examples/policy-result.json
+
+      - name: Dry-run the example workflow steps against the synthetic fixture
+        shell: bash
+        env:
+          SCG_PRIVATE: ${{ runner.temp }}/supply-chain-graph
+        run: |
+          set -euo pipefail
+          mkdir -p "$SCG_PRIVATE"
+          node scripts/supply-chain.mjs scan --config examples/portfolio.example.json --out "$SCG_PRIVATE/snapshot.json"
+          node scripts/supply-chain.mjs evaluate --snapshot "$SCG_PRIVATE/snapshot.json" --policy contracts/policy.default.json --out "$SCG_PRIVATE/policy-result.json"
+          node scripts/supply-chain.mjs summary --result "$SCG_PRIVATE/policy-result.json" --out - >> "$GITHUB_STEP_SUMMARY"
