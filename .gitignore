@@ -1,0 +1,13 @@
+portfolio.local.json
+local/
+*.local.json
+*.local.html
+/private/
+/output/
+/outputs/
+/snapshot.json
+/enriched.json
+/enriched-details.json
+/events.json
+/dashboard.html
+/triage-state.json

@@ -1,0 +1,5 @@
+{
+  "projects": [
+    { "id": "sample-app", "label": "Sample App", "root": "./fixture/sample-app" }
+  ]
+}

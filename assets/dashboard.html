@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Supply Chain Graph</title>
+  <meta name="description" content="A local network view of project dependencies and source coverage.">
+  <style>/*__STYLE__*/</style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand"><span class="brand-mark">s<span>·</span></span><span>Supply Chain Graph<small>DEPENDENCY WORKSPACE</small></span></div>
+    <div class="header-status"><span class="status-dot"></span> Local evidence snapshot</div>
+    <button id="export" class="quiet" type="button">Export JSON ↗</button>
+  </header>
+  <main>
+    <div class="workspace-heading"><div><span class="eyebrow">PORTFOLIO EVIDENCE</span><h1>Follow the dependency.</h1></div><p>Choose a project or package. Trace the version, source, and relationships behind it.</p><span class="snapshot-stamp" id="stamp"></span></div>
+    <div class="metrics" id="metrics"></div>
+    <section class="signal-bar" aria-label="Dependency status filters"><div class="signal-buttons" role="group" aria-label="Filter dependency graph by status"><button id="signal-all" type="button" aria-pressed="true">All paths</button><button id="signal-critical" type="button" aria-pressed="false"><strong id="signal-critical-count">—</strong> Critical</button><button id="signal-advisory" type="button" aria-pressed="false"><strong id="signal-advisory-count">—</strong> Advisories</button><button id="signal-deprecated" type="button" aria-pressed="false"><strong id="signal-deprecated-count">—</strong> Deprecated / cached</button><button id="signal-outdated" type="button" aria-pressed="false"><strong id="signal-outdated-count">—</strong> Newer npm latest</button><button id="signal-unknown" type="button" aria-pressed="false"><strong id="signal-unknown-count">—</strong> Advisory unknown</button><button id="signal-coverage" type="button" aria-pressed="false"><strong id="signal-coverage-count">—</strong> Coverage gaps</button></div><p id="signal-note" role="status"></p></section>
+    <section class="workspace" aria-label="Dependency graph and evidence">
+      <div class="graph-area">
+        <div class="graph-toolbar"><div class="graph-title"><span class="graph-symbol" aria-hidden="true">◇</span><div><strong>Dependency network</strong><small id="graph-subtitle">Resolved package paths</small></div></div><div class="view-tabs" role="tablist" aria-label="Supply chain lens"><button id="js-tab" type="button" role="tab" aria-selected="false">JavaScript requests</button><button id="source-tab" type="button" role="tab" aria-selected="false">Source imports</button><button id="npm-tab" type="button" role="tab" aria-selected="true">npm / pnpm</button><button id="github-tab" type="button" role="tab" aria-selected="false">GitHub sources</button></div></div>
+        <div class="graph-controls"><label>Scope<select id="project"></select></label><label>Graph view<select id="graph-detail"><option value="direct">All direct dependencies</option><option value="paths" selected>Dependency paths</option></select></label><label>Find a dependency<input id="search" type="search" placeholder="Package, action, or repository"></label><div class="graph-pages" id="graph-pages"><button id="page-prev" type="button" aria-label="Previous projects">←</button><span id="page-label" role="status"></span><button id="page-next" type="button" aria-label="Next projects">→</button><button id="page-all" type="button">Show all projects</button></div><div class="graph-zoom" aria-label="Graph zoom controls"><button id="zoom-out" type="button" aria-label="Zoom out">−</button><button id="zoom-fit" type="button">Fit</button><button id="zoom-in" type="button" aria-label="Zoom in">+</button><span id="zoom-level" role="status">100%</span></div><span class="scope-hint" id="scope-hint">Direct → transitive → source</span><div class="scope-context" id="scope-context" role="status" hidden></div></div>
+        <div class="graph-stage" id="graph-stage" aria-label="Scrollable graph viewport"><svg id="graph" role="group" aria-label="Interactive dependency network" viewBox="0 0 1100 650" preserveAspectRatio="xMidYMid meet"></svg><div id="graph-empty" class="graph-empty" hidden></div></div>
+        <div class="graph-footer"><div class="legend"><span class="legend-item project">Project</span><span class="legend-item package">Package</span><span class="legend-item source-file">Source file</span><span class="legend-item source-import">Source import</span><span class="legend-item workspace-node">Workspace</span><span class="legend-item action">Action</span><span class="legend-item repository">Repository</span></div><span id="graph-note" role="status"></span></div>
+      </div>
+      <aside class="evidence-panel" aria-label="Selected evidence and findings">
+        <div class="panel-heading"><div><span class="eyebrow">BESIDE THE GRAPH</span><h2>Source and context.</h2></div></div>
+        <div class="panel-scroll"><section class="inspector" aria-labelledby="inspect-title"><h3 id="inspect-title">Select a node or edge</h3><div id="inspector"><p>Follow a connection to inspect its scope and source file.</p></div></section><section class="finding-section" aria-labelledby="findings-title"><div class="section-heading"><h3 id="findings-title">Coverage findings</h3><span id="finding-count"></span></div><p class="source-note">Live GitHub remotes are not checked. Package lookup coverage appears above the graph.</p><div id="findings"></div></section></div>
+        <div class="panel-footer"><span class="status-dot"></span><span id="panel-mode">Read-only local snapshot</span></div>
+      </aside>
+    </section>
+    <section class="data-section"><div class="section-heading"><div><span class="eyebrow">EVIDENCE INDEX</span><h2>What the scan found.</h2></div><span id="inventory-note"></span></div><div class="data-grid"><div class="data-card"><h3>Project coverage</h3><div class="table-wrap"><table><thead><tr><th>Project</th><th>Manifest / lock</th><th>JS source</th><th>Git</th><th>Actions</th><th>Python</th></tr></thead><tbody id="coverage"></tbody></table></div></div><div class="data-card"><h3>Selected package occurrences</h3><div class="table-wrap"><table><thead><tr><th>Package</th><th>Version</th><th>Advisory check</th><th>npm status</th></tr></thead><tbody id="inventory"></tbody></table></div></div></div></section>
+    <section class="data-section discovery-section" aria-labelledby="discovery-title"><div class="section-heading"><div><span class="eyebrow">SOURCE DISCOVERY</span><h2 id="discovery-title">Roots to review.</h2></div><span id="discovery-note"></span></div><p class="source-note">Discovery lists local repositories and manifests. A nested manifest is a scan candidate, not proof that it is a separate product. Choose a row to set its root.</p><div class="data-card"><div class="table-wrap"><table><thead><tr><th>Source</th><th>Evidence</th><th>Coverage</th><th>Action</th></tr></thead><tbody id="discovery"></tbody></table></div></div></section>
+    <section class="data-section" aria-labelledby="edge-index-title"><div class="section-heading"><div><span class="eyebrow">FULL RELATIONSHIP INDEX</span><h2 id="edge-index-title">Every recorded edge.</h2></div><span id="edge-index-note" role="status"></span></div><p class="source-note">Includes all edge types across the four graph lenses. Uses the scope, status, and search above. Select a row to inspect its evidence; the network drawing shows a bounded path sample.</p><div class="data-card"><div class="table-wrap"><table><thead><tr><th>From</th><th>Relationship</th><th>To</th><th>Evidence</th><th>Inspect</th></tr></thead><tbody id="edges-table"></tbody></table></div><div class="index-pages"><button id="edge-prev" type="button">← Previous</button><span id="edge-page-label" role="status"></span><button id="edge-next" type="button">Next →</button></div></div></section>
+    <footer class="app-footer"><span>LOCAL SOFTWARE SUPPLY CHAIN</span><span>Project → resolved version → source</span><span>Coverage is evidence, not assurance.</span></footer>
+  </main>
+  <script>const snapshot = /*__SNAPSHOT__*/null;
+/*__APP__*/</script>
+</body>
+</html>

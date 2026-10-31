@@ -1,0 +1,6 @@
+{
+  "name": "sample-app",
+  "version": "1.0.0",
+  "dependencies": { "graph-widget": "^1.2.0" },
+  "devDependencies": { "build-helper": "^2.0.0" }
+}

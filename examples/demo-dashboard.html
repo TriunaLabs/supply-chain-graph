@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Supply Chain Graph</title>
+  <meta name="description" content="A local network view of project dependencies and source coverage.">
+  <style>:root{color-scheme:light;--ink:#233c3a;--muted:#71807b;--teal:#26796b;--line:#e1e6df;--paper:#fff;--wash:#f4f5ef;--background:#f7f8f3;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink);background:var(--background);font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer;color:inherit}button:focus-visible,input:focus-visible,select:focus-visible,.node:focus-visible,.edge:focus-visible{outline:2px solid var(--teal);outline-offset:3px}[hidden]{display:none!important}
+.app-header{height:77px;border-bottom:1px solid var(--line);padding:0 34px;display:flex;align-items:center;justify-content:space-between;gap:20px;background:#fbfcf8}.brand{display:flex;align-items:center;gap:11px;font-size:22px;font-weight:650;letter-spacing:-.9px}.brand-mark{width:36px;height:39px;background:#e5eddf;display:grid;place-content:center;border-radius:9px;font:italic bold 33px Georgia;position:relative;padding-right:5px}.brand-mark span{position:absolute;right:4px;top:1px;color:var(--teal)}.brand small{display:block;font-size:8px;letter-spacing:1.55px;font-weight:600;margin-top:3px;color:#7b887c}.header-status{font-size:11px;color:#7c877d;display:flex;gap:9px;align-items:center}.status-dot{display:inline-block;width:6px;height:6px;background:#6c9479;border-radius:50%;flex:none}.quiet{border:1px solid #dce5da;background:#fff;border-radius:7px;padding:9px 13px;font-size:11px}.quiet:hover,.view-tabs button:hover{background:#e8ede5}
+main{padding:25px 34px 0;max-width:1900px;margin:auto}.workspace-heading{display:flex;align-items:center;gap:40px;margin-bottom:20px}.eyebrow{font-size:9px;font-weight:700;letter-spacing:1.55px;color:#87917f}.workspace-heading h1{font:400 32px Georgia,serif;letter-spacing:-.9px;margin:8px 0 0}.workspace-heading p{font-size:11px;line-height:1.75;color:#7a847b;margin:12px 0 0}.snapshot-stamp{margin-left:auto;font-size:10px;color:#7b8b7b;border:1px solid #e1e6dc;border-radius:30px;padding:9px 13px;background:#fafbf7;white-space:nowrap}.metrics{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}.metric{background:#fbfcf8;border:1px solid #e2e8de;border-radius:8px;padding:9px 14px;min-width:130px}.metric strong{font:400 20px Georgia,serif;display:block}.metric span{font-size:10px;color:#829083}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) 350px;height:690px;border:1px solid #dce3d9;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 5px 18px #27452a06}.graph-area{min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line)}.graph-toolbar{height:64px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 20px}.graph-title{display:flex;align-items:center;gap:10px}.graph-symbol{font-size:24px;color:#789483}.graph-title strong{display:block;font-size:12px;font-weight:650}.graph-title small{display:block;font-size:10px;color:#8a948a;margin-top:4px}.view-tabs{display:flex;gap:18px;align-self:stretch}.view-tabs button{border:0;background:none;border-radius:0;border-bottom:2px solid transparent;padding:0 4px;font-size:11px;color:#849082}.view-tabs button[aria-selected=true]{border-color:#598768;color:#3b6f50}
+.graph-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap;padding:12px 20px 10px;border-bottom:1px solid #edf0ea}.graph-controls label{font-size:10px;color:#758474;display:flex;flex-direction:column;gap:5px}.graph-controls select,.graph-controls input{font-size:11px;border:1px solid #d8e1d2;border-radius:6px;padding:8px 9px;background:#fbfdf8;color:var(--ink);min-width:180px}.graph-controls input{min-width:230px}.scope-hint{font-size:10px;color:#91a086;margin-left:auto;padding-bottom:9px}.graph-stage{flex:1;min-height:0;overflow:scroll;scrollbar-gutter:stable;position:relative;background-color:#fafbf7;background-image:radial-gradient(#dfe7da 0.6px,transparent 0.6px);background-size:17px 17px}.graph-stage svg{display:block;max-width:none;max-height:none;flex:none}.graph-empty{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);max-width:300px;text-align:center;font-size:12px;line-height:1.7;color:#829083;background:#fafbf7;padding:18px}.graph-zoom{display:flex;align-items:center;gap:5px;border-top:1px solid var(--line);padding:6px 14px;background:#fcfdf9}.graph-zoom button{border:1px solid #d8e1d2;background:#fff;border-radius:5px;height:26px;min-width:27px;font-size:12px}.graph-zoom button:hover{background:#e8ede5}.graph-zoom span{font-size:10px;color:#536a5e;min-width:36px;text-align:right}.graph-zoom small{font-size:9px;color:#91a086;margin-left:8px}.column-title{font:600 10px Segoe UI,Arial,sans-serif;fill:#697e70;letter-spacing:.25px}.column-rule{stroke:#dfe7da;stroke-width:1}
+.edge{fill:none;stroke:#b6cbbb;stroke-width:1.25;opacity:.8;cursor:pointer;pointer-events:stroke}.edge.active{stroke:#27745f;stroke-width:2.3;opacity:1}.edge.dim{opacity:.2}.node{cursor:pointer}.node rect{fill:#fff;stroke:#dbe4d8;stroke-width:1.1}.node text{font:11px Segoe UI,Arial,sans-serif;fill:#2b493e}.node .node-type{font-size:8px;letter-spacing:.6px;fill:#849681}.node.project rect{fill:#e5f0e8;stroke:#7eac8f}.node.occurrence rect,.node.artifact rect{fill:#f3f8f2;stroke:#9fbea9}.node.declaration rect{fill:#f5f4ed;stroke:#c8b99d}.node.workspace rect{fill:#f0edf5;stroke:#b2a1c8}.node.action rect{fill:#f3eef6;stroke:#b39bc5}.node.repository rect,.node.checkout rect{fill:#f8f3e9;stroke:#d4bd91}.node.selected rect{stroke:#24745a;stroke-width:2.4}.node.dim{opacity:.3}.graph-footer{min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:15px;border-top:1px solid var(--line);padding:7px 14px;background:#fcfdf9}.legend{display:flex;gap:12px;flex-wrap:wrap}.legend-item{font-size:9px;color:#829083;white-space:nowrap}.legend-item:before{content:'';width:8px;height:8px;display:inline-block;margin-right:5px;border-radius:2px;background:#7eac8f}.legend-item.package:before{background:#9fbea9}.legend-item.workspace-node:before{background:#b2a1c8}.legend-item.action:before{background:#b39bc5}.legend-item.repository:before{background:#d4bd91}#graph-note{font-size:9px;color:#879383;text-align:right}
+.evidence-panel{display:flex;flex-direction:column;min-width:0}.panel-heading{height:84px;flex:none;padding:22px 23px 12px;border-bottom:1px solid var(--line)}.panel-heading h2{font:400 23px Georgia,serif;letter-spacing:-.5px;margin:6px 0 0}.panel-scroll{flex:1;min-height:0;overflow:auto;padding:18px 22px}.panel-scroll h3{font-size:12px;margin:0 0 12px}.inspector{padding-bottom:18px;border-bottom:1px solid var(--line);min-height:160px}.inspector p,.source-note{font-size:11px;line-height:1.7;color:#819077;margin:4px 0 10px}.inspector .entity-type{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#668d5c}.inspector .entity-name{font:400 20px/1.3 Georgia,serif;overflow-wrap:anywhere;margin:6px 0 10px}.detail-row{font-size:10px;line-height:1.6;padding:5px 0;border-top:1px solid #edf0e9;overflow-wrap:anywhere}.detail-row b{color:#536a5e}.relation-list{margin:8px 0 0;padding-left:18px;font-size:10px;color:#667b6c;line-height:1.6}.finding-section{padding-top:19px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}.section-heading h3{margin:0}.section-heading span{font-size:10px;color:#8a948a}.finding-card{display:block;width:100%;text-align:left;border:1px solid #e1e5db;border-radius:8px;background:#fff;padding:12px;margin:10px 0;cursor:pointer}.finding-card:hover{border-color:#a7bea5;background:#fcfef9}.finding-card .finding-kind{display:block;font-size:8px;letter-spacing:.8px;font-weight:700;color:#927650;text-transform:uppercase;margin-bottom:6px}.finding-card strong{display:block;font-size:11px;line-height:1.5}.finding-card small{display:block;color:#8b9684;font-size:9px;line-height:1.5;margin-top:7px}.panel-footer{height:35px;flex:none;border-top:1px solid var(--line);display:flex;align-items:center;gap:7px;padding:0 22px;font-size:9px;color:#9aa48f;background:#fcfdf9}
+.data-section{margin-top:23px}.data-section>.section-heading{margin-bottom:12px}.data-section h2{font:400 22px Georgia,serif;margin:5px 0 0}.data-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.8fr);gap:14px}.data-card{background:#fff;border:1px solid #dfe5dd;border-radius:9px;padding:14px;min-width:0}.data-card h3{font-size:12px;margin:0 0 11px}.table-wrap{max-height:280px;overflow:auto}table{border-collapse:collapse;width:100%;font-size:10px}th,td{text-align:left;vertical-align:top;padding:8px;border-bottom:1px solid #edf0ea}th{color:#7b8a7a;font-weight:600;position:sticky;top:0;background:#fff}td{color:#42594c;overflow-wrap:anywhere}.app-footer{display:flex;justify-content:space-between;padding:18px 1px;font-size:8px;letter-spacing:.7px;color:#9ba28f}.app-footer span:first-child{font-size:7px;letter-spacing:1.4px}
+.graph-area{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;height:100%;min-height:0;overflow:hidden}.graph-stage{height:auto;min-height:0;min-width:0;overflow:auto;scrollbar-gutter:auto}.graph-stage svg{margin:auto}.graph-zoom{border:0;padding:0;background:transparent;margin-left:auto}.scope-hint{margin-left:0}.evidence-panel{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100%;min-height:0;overflow:hidden}.panel-scroll{min-height:0}
+.signal-bar{border:1px solid #dfe5dd;border-radius:9px;background:#fff;padding:9px 11px;margin-bottom:14px}.signal-buttons{display:flex;gap:7px;flex-wrap:wrap}.signal-buttons button{border:1px solid #dfe5dd;border-radius:6px;background:#fbfcf8;padding:7px 10px;font-size:10px;white-space:nowrap}.signal-buttons button:hover{background:#eef3ec}.signal-buttons button[aria-pressed=true]{border-color:#4f8c73;background:#eaf3ea;color:#245f4c}.signal-buttons strong{font:600 12px Georgia,serif;margin-right:3px}.signal-bar p{font-size:9px;color:#778978;margin:7px 1px 0;line-height:1.5}.signal-buttons #signal-advisory strong{color:#a54746}.signal-buttons #signal-deprecated strong{color:#a16a36}.signal-buttons #signal-outdated strong{color:#667b3b}.signal-buttons #signal-unknown strong{color:#7b8581}.signal-buttons #signal-coverage strong{color:#946f48}.node.signal-advisory rect{stroke:#bd5551;stroke-width:2}.node.signal-deprecated rect{stroke:#b9814b;stroke-width:2}.node.signal-outdated rect{stroke:#8d9d54;stroke-width:2}.node.signal-coverage rect{stroke:#ba8c57;stroke-width:2}.node.signal-unknown rect{stroke:#9daaa3;stroke-dasharray:3 2}.node .status-marker{fill:#9daaa3}.node.signal-advisory .status-marker{fill:#bd5551}.node.signal-deprecated .status-marker{fill:#b9814b}.node.signal-outdated .status-marker{fill:#8d9d54}.node.signal-coverage .status-marker{fill:#ba8c57}.node.selected rect{stroke:#24745a;stroke-width:2.4}.advisory-links{padding-left:17px;margin:6px 0;font-size:10px}.advisory-links a{color:#9f4444}
+@media(max-width:1100px){main{padding:20px 18px 0}.app-header{padding:0 20px}.workspace{grid-template-columns:minmax(0,1fr) 300px}.workspace-heading p{display:none}.scope-hint{display:none}.graph-controls input{min-width:180px}.graph-toolbar{height:auto;min-height:64px;flex-wrap:wrap;padding-top:8px}.view-tabs{min-height:36px;max-width:100%;overflow-x:auto;white-space:nowrap}}@media(max-width:760px){.app-header{height:65px;padding:0 14px}.brand{font-size:17px}.brand-mark{width:30px;height:34px;font-size:28px}.header-status{display:none}.app-header .quiet{font-size:10px;padding:8px}main{padding:19px 10px 0}.workspace-heading{margin:0 6px 16px;gap:10px}.workspace-heading h1{font-size:27px}.snapshot-stamp{display:none}.workspace{display:flex;flex-direction:column;height:auto}.graph-area{height:610px;border-right:0;border-bottom:1px solid var(--line)}.evidence-panel{height:420px}.graph-toolbar{padding:8px 12px 0}.graph-controls{padding:9px 12px}.graph-controls label{flex:1}.graph-controls select,.graph-controls input{width:100%;min-width:0}.graph-footer{align-items:start;flex-direction:column}.data-grid{grid-template-columns:1fr}.app-footer span:last-child{display:none}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand"><span class="brand-mark">s<span>·</span></span><span>Supply Chain Graph<small>DEPENDENCY WORKSPACE</small></span></div>
+    <div class="header-status"><span class="status-dot"></span> Local evidence snapshot</div>
+    <button id="export" class="quiet" type="button">Export JSON ↗</button>
+  </header>
+  <main>
+    <div class="workspace-heading"><div><span class="eyebrow">PORTFOLIO EVIDENCE</span><h1>Follow the dependency.</h1></div><p>Choose a project or package. Trace the version, source, and relationships behind it.</p><span class="snapshot-stamp" id="stamp"></span></div>
+    <div class="metrics" id="metrics"></div>
+    <section class="signal-bar" aria-label="Dependency status filters"><div class="signal-buttons" role="group" aria-label="Filter dependency graph by status"><button id="signal-all" type="button" aria-pressed="true">All paths</button><button id="signal-advisory" type="button" aria-pressed="false"><strong id="signal-advisory-count">—</strong> Advisories</button><button id="signal-deprecated" type="button" aria-pressed="false"><strong id="signal-deprecated-count">—</strong> Deprecated / cached</button><button id="signal-outdated" type="button" aria-pressed="false"><strong id="signal-outdated-count">—</strong> Newer npm latest</button><button id="signal-unknown" type="button" aria-pressed="false"><strong id="signal-unknown-count">—</strong> Advisory unknown</button><button id="signal-coverage" type="button" aria-pressed="false"><strong id="signal-coverage-count">—</strong> Coverage gaps</button></div><p id="signal-note" role="status"></p></section>
+    <section class="workspace" aria-label="Dependency graph and evidence">
+      <div class="graph-area">
+        <div class="graph-toolbar"><div class="graph-title"><span class="graph-symbol" aria-hidden="true">◇</span><div><strong>Dependency network</strong><small id="graph-subtitle">Resolved package paths</small></div></div><div class="view-tabs" role="tablist" aria-label="Supply chain lens"><button id="js-tab" type="button" role="tab" aria-selected="false">JavaScript requests</button><button id="npm-tab" type="button" role="tab" aria-selected="true">npm / pnpm</button><button id="github-tab" type="button" role="tab" aria-selected="false">GitHub sources</button></div></div>
+        <div class="graph-controls"><label>Scope<select id="project"></select></label><label>Find a dependency<input id="search" type="search" placeholder="Package, action, or repository"></label><div class="graph-zoom" aria-label="Graph zoom controls"><button id="zoom-out" type="button" aria-label="Zoom out">−</button><button id="zoom-fit" type="button">Fit</button><button id="zoom-in" type="button" aria-label="Zoom in">+</button><span id="zoom-level" role="status">100%</span></div><span class="scope-hint" id="scope-hint">Direct → transitive → source</span></div>
+        <div class="graph-stage" id="graph-stage" aria-label="Scrollable graph viewport"><svg id="graph" role="group" aria-label="Interactive dependency network" viewBox="0 0 1100 650" preserveAspectRatio="xMidYMid meet"></svg><div id="graph-empty" class="graph-empty" hidden></div></div>
+        <div class="graph-footer"><div class="legend"><span class="legend-item project">Project</span><span class="legend-item package">Package</span><span class="legend-item workspace-node">Workspace</span><span class="legend-item action">Action</span><span class="legend-item repository">Repository</span></div><span id="graph-note" role="status"></span></div>
+      </div>
+      <aside class="evidence-panel" aria-label="Selected evidence and findings">
+        <div class="panel-heading"><div><span class="eyebrow">BESIDE THE GRAPH</span><h2>Source and context.</h2></div></div>
+        <div class="panel-scroll"><section class="inspector" aria-labelledby="inspect-title"><h3 id="inspect-title">Select a node or edge</h3><div id="inspector"><p>Follow a connection to inspect its scope and source file.</p></div></section><section class="finding-section" aria-labelledby="findings-title"><div class="section-heading"><h3 id="findings-title">Coverage findings</h3><span id="finding-count"></span></div><p class="source-note">Live GitHub remotes are not checked. Package lookup coverage appears above the graph.</p><div id="findings"></div></section></div>
+        <div class="panel-footer"><span class="status-dot"></span><span>Read-only local snapshot</span></div>
+      </aside>
+    </section>
+    <section class="data-section"><div class="section-heading"><div><span class="eyebrow">EVIDENCE INDEX</span><h2>What the scan found.</h2></div><span id="inventory-note"></span></div><div class="data-grid"><div class="data-card"><h3>Project coverage</h3><div class="table-wrap"><table><thead><tr><th>Project</th><th>JavaScript</th><th>Git</th><th>Actions</th><th>Python</th></tr></thead><tbody id="coverage"></tbody></table></div></div><div class="data-card"><h3>Selected package occurrences</h3><div class="table-wrap"><table><thead><tr><th>Package</th><th>Version</th><th>Advisory check</th><th>npm status</th></tr></thead><tbody id="inventory"></tbody></table></div></div></div></section>
+    <footer class="app-footer"><span>LOCAL SOFTWARE SUPPLY CHAIN</span><span>Project → resolved version → source</span><span>Coverage is evidence, not assurance.</span></footer>
+  </main>
+  <script>const snapshot = {"schemaVersion":1,"generatedAt":"2026-10-30T19:54:11.220Z","coverage":[{"projectId":"sample-app","npm":"resolved-v3","git":"not-found","actions":"1 workflow uses","python":"1 requirements"}],"nodes":[{"id":"action:actions/checkout@v4","kind":"action","label":"actions/checkout@v4","reference":"v4","pinned":false},{"id":"decl:js:sample-app:root:development:build-helper","kind":"declaration","label":"build-helper ^2.0.0","name":"build-helper","requested":"^2.0.0","ecosystem":"JavaScript","projectId":"sample-app"},{"id":"decl:js:sample-app:root:runtime:graph-widget","kind":"declaration","label":"graph-widget ^1.2.0","name":"graph-widget","requested":"^1.2.0","ecosystem":"JavaScript","projectId":"sample-app"},{"id":"github:actions/checkout","kind":"repository","label":"actions/checkout"},{"id":"github:example/sample-tool","kind":"repository","label":"example/sample-tool"},{"id":"npm:build-helper@2.0.4","kind":"artifact","label":"build-helper@2.0.4","name":"build-helper","version":"2.0.4","ecosystem":"npm","localDeprecation":null},{"id":"npm:graph-widget@1.2.3","kind":"artifact","label":"graph-widget@1.2.3","name":"graph-widget","version":"1.2.3","ecosystem":"npm","localDeprecation":"Demo fixture: use graph-widget-next"},{"id":"npm:shared-core@3.1.0","kind":"artifact","label":"shared-core@3.1.0","name":"shared-core","version":"3.1.0","ecosystem":"npm","localDeprecation":null},{"id":"occ:sample-app:node_modules/build-helper","kind":"occurrence","label":"build-helper@2.0.4","name":"build-helper","version":"2.0.4","projectId":"sample-app","location":"node_modules/build-helper","sourceKind":"registry-or-tarball","integrity":null,"localDeprecation":null},{"id":"occ:sample-app:node_modules/graph-widget","kind":"occurrence","label":"graph-widget@1.2.3","name":"graph-widget","version":"1.2.3","projectId":"sample-app","location":"node_modules/graph-widget","sourceKind":"registry-or-tarball","integrity":null,"localDeprecation":"Demo fixture: use graph-widget-next"},{"id":"occ:sample-app:node_modules/shared-core","kind":"occurrence","label":"shared-core@3.1.0","name":"shared-core","version":"3.1.0","projectId":"sample-app","location":"node_modules/shared-core","sourceKind":"registry-or-tarball","integrity":null,"localDeprecation":null},{"id":"project:sample-app","kind":"project","label":"Sample App","projectId":"sample-app","sourceStatus":"Local directory scanned"},{"id":"pypi:requests@2.32.0","kind":"artifact","label":"requests@2.32.0","name":"requests","version":"2.32.0","requested":"requests==2.32.0","ecosystem":"PyPI","projectId":"sample-app"}],"edges":[{"from":"action:actions/checkout@v4","to":"github:actions/checkout","kind":"sourced-from","source":".github/workflows/check.yml"},{"from":"decl:js:sample-app:root:development:build-helper","to":"occ:sample-app:node_modules/build-helper","kind":"resolved-by","scope":"development","source":"package-lock.json"},{"from":"decl:js:sample-app:root:runtime:graph-widget","to":"occ:sample-app:node_modules/graph-widget","kind":"resolved-by","scope":"runtime","source":"package-lock.json"},{"from":"occ:sample-app:node_modules/build-helper","to":"npm:build-helper@2.0.4","kind":"resolves-to","source":"package-lock.json"},{"from":"occ:sample-app:node_modules/build-helper","to":"occ:sample-app:node_modules/shared-core","kind":"depends-on","scope":"runtime","requested":"^3.0.0","source":"package-lock.json"},{"from":"occ:sample-app:node_modules/graph-widget","to":"npm:graph-widget@1.2.3","kind":"resolves-to","source":"package-lock.json"},{"from":"occ:sample-app:node_modules/graph-widget","to":"occ:sample-app:node_modules/shared-core","kind":"depends-on","scope":"runtime","requested":"^3.0.0","source":"package-lock.json"},{"from":"occ:sample-app:node_modules/shared-core","to":"npm:shared-core@3.1.0","kind":"resolves-to","source":"package-lock.json"},{"from":"project:sample-app","to":"action:actions/checkout@v4","kind":"uses-action","source":".github/workflows/check.yml"},{"from":"project:sample-app","to":"decl:js:sample-app:root:development:build-helper","kind":"declares","scope":"development","source":"package.json"},{"from":"project:sample-app","to":"decl:js:sample-app:root:runtime:graph-widget","kind":"declares","scope":"runtime","source":"package.json"},{"from":"project:sample-app","to":"github:example/sample-tool","kind":"submodule","source":".gitmodules"},{"from":"project:sample-app","to":"occ:sample-app:node_modules/build-helper","kind":"depends-on","scope":"development","requested":"^2.0.0","source":"package.json + package-lock.json"},{"from":"project:sample-app","to":"occ:sample-app:node_modules/graph-widget","kind":"depends-on","scope":"runtime","requested":"^1.2.0","source":"package.json + package-lock.json"},{"from":"project:sample-app","to":"pypi:requests@2.32.0","kind":"depends-on","scope":"runtime","source":"requirements.txt"}],"findings":[]};
+const $ = id => document.getElementById(id);
+const byId = new Map(snapshot.nodes.map(node => [node.id, node]));
+const projects = snapshot.nodes.filter(node => node.kind === 'project');
+const occurrences = snapshot.nodes.filter(node => node.kind === 'occurrence');
+const npmArtifacts = snapshot.nodes.filter(node => node.kind === 'artifact' && node.ecosystem === 'npm');
+const artifactOf = new Map(snapshot.edges.filter(edge => edge.kind === 'resolves-to').map(edge => [edge.from, edge.to]));
+const packageChecks = snapshot.enrichment?.packages || {};
+const projectsWithFindings = new Set(snapshot.findings.map(finding => finding.projectId));
+const relationKinds = new Set(['depends-on', 'declares', 'resolved-by', 'contains-workspace', 'uses-action', 'checked-out-at', 'tracks', 'sourced-from', 'submodule']);
+const relations = snapshot.edges.filter(edge => relationKinds.has(edge.kind) && byId.has(edge.from) && byId.has(edge.to));
+const outgoing = new Map();
+for (const edge of relations) {
+  if (!outgoing.has(edge.from)) outgoing.set(edge.from, []);
+  outgoing.get(edge.from).push(edge);
+}
+const edgePriority = edge => ({ 'declares': 0, 'resolved-by': 1, 'depends-on': 2, 'contains-workspace': 3, 'checked-out-at': 4, 'uses-action': 5, 'tracks': 6, 'sourced-from': 7, 'submodule': 8 })[edge.kind] ?? 9;
+for (const edges of outgoing.values()) edges.sort((a, b) => edgePriority(a) - edgePriority(b) || (byId.get(a.to)?.label || '').localeCompare(byId.get(b.to)?.label || ''));
+
+let mode = 'npm';
+let selectedId = null;
+let selectedEdge = null;
+let currentView = null;
+let zoom = 1;
+let fitZoom = true;
+let signalFilter = 'all';
+const projectSelect = $('project');
+const allOption = document.createElement('option'); allOption.value = 'all'; allOption.textContent = 'All projects'; projectSelect.append(allOption);
+for (const project of projects) {
+  const option = document.createElement('option');
+  option.value = project.id;
+  option.textContent = project.label;
+  projectSelect.append(option);
+}
+projectSelect.value = projects.find(project => (outgoing.get(project.id) || []).some(edge => byId.get(edge.to)?.kind === 'occurrence'))?.id || projects[0]?.id || '';
+$('stamp').textContent = 'Snapshot · ' + new Date(snapshot.generatedAt).toLocaleString();
+const metricValues = [
+  [projects.length, 'projects'],
+  [occurrences.length, 'resolved occurrences'],
+  [snapshot.nodes.filter(node => node.kind === 'artifact').length, 'package versions'],
+  [relations.length, 'relationships']
+];
+for (const [value, label] of metricValues) {
+  const box = document.createElement('div'); box.className = 'metric';
+  const number = document.createElement('strong'); number.textContent = value.toLocaleString();
+  const text = document.createElement('span'); text.textContent = label;
+  box.append(number, text); $('metrics').append(box);
+}
+
+function checksFor(node) {
+  const id = node?.kind === 'occurrence' ? artifactOf.get(node.id) : node?.kind === 'artifact' ? node.id : null;
+  return id ? packageChecks[id] || {} : {};
+}
+function localDeprecationFor(node) {
+  return node?.localDeprecation || null;
+}
+function signalFlags(node) {
+  const checks = checksFor(node);
+  return {
+    advisory: checks.osv?.status === 'checked' && (checks.osv.advisories?.length || 0) > 0,
+    deprecated: checks.registry?.status === 'checked' ? !!checks.registry.deprecated : !!localDeprecationFor(node),
+    outdated: checks.registry?.status === 'checked' && checks.registry.newerLatestTag === true,
+    unknown: (node?.kind === 'occurrence' || node?.kind === 'artifact' && node.ecosystem === 'npm') && checks.osv?.status !== 'checked',
+    coverage: node?.kind === 'project' && projectsWithFindings.has(node.projectId)
+  };
+}
+function matchesSignal(node) { return signalFilter === 'all' || !!signalFlags(node)[signalFilter]; }
+function visibleArtifacts() {
+  if (projectSelect.value === 'all') return npmArtifacts;
+  const selected = projectSelect.value.slice(8);
+  const ids = new Set(occurrences.filter(node => node.projectId === selected).map(node => artifactOf.get(node.id)));
+  return npmArtifacts.filter(node => ids.has(node.id));
+}
+function renderSignalBar() {
+  const artifacts = npmArtifacts, counts = { advisory: 0, deprecated: 0, outdated: 0, unknown: 0 };
+  let osvChecked = 0, registryChecked = 0, failed = 0, localDeprecated = 0;
+  for (const artifact of artifacts) {
+    const flags = signalFlags(artifact), checks = checksFor(artifact);
+    for (const key of Object.keys(counts)) if (flags[key]) counts[key]++;
+    if (checks.osv?.status === 'checked') osvChecked++;
+    if (checks.registry?.status === 'checked') registryChecked++;
+    if (localDeprecationFor(artifact)) localDeprecated++;
+    if (checks.osv?.status === 'error' || checks.registry?.status === 'error') failed++;
+  }
+  counts.coverage = snapshot.findings.length;
+  for (const key of ['advisory', 'deprecated', 'outdated', 'unknown', 'coverage']) {
+    const checked = key === 'advisory' ? osvChecked : key === 'deprecated' ? registryChecked + localDeprecated : key === 'outdated' ? registryChecked : 1;
+    $(`signal-${key}-count`).textContent = checked ? String(counts[key]) : '—';
+  }
+  for (const key of ['all', 'advisory', 'deprecated', 'outdated', 'unknown', 'coverage']) $(`signal-${key}`).setAttribute('aria-pressed', String(signalFilter === key));
+  $('signal-note').textContent = `Portfolio totals · OSV checked ${osvChecked}/${artifacts.length} package versions · npm registry checked ${registryChecked}/${artifacts.length}${localDeprecated ? ` · ${localDeprecated} lockfile deprecation messages (cached)` : ''}${failed ? ` · ${failed} lookups failed` : ''}. Unknown results are not clean results.`;
+}
+
+function readableStatus(value) {
+  if (value?.startsWith('resolved-v')) return `npm lock v${value.slice(-1)}`;
+  return ({ 'pnpm-v9': 'pnpm lock v9', 'manifest-only': 'Manifest only', 'not-found': 'Not found at root', 'path-not-configured': 'No source path configured', 'path-missing': 'Configured path missing', 'access-denied': 'Access denied', 'unavailable': 'Source unavailable', 'not-scanned': 'Not scanned', 'local-head-only': 'Local HEAD', 'cached-upstream': 'Cached upstream' })[value] || value || '—';
+}
+function tableRow(target, cells) {
+  const row = document.createElement('tr');
+  for (const cell of cells) { const td = document.createElement('td'); td.textContent = cell ?? '—'; row.append(td); }
+  target.append(row);
+}
+function renderCoverage() {
+  const body = $('coverage'); body.replaceChildren();
+  for (const record of snapshot.coverage) tableRow(body, [byId.get(`project:${record.projectId}`)?.label || record.projectId, readableStatus(record.npm), readableStatus(record.git), readableStatus(record.actions), readableStatus(record.python)]);
+}
+function renderInventory() {
+  const body = $('inventory'); body.replaceChildren();
+  const selected = projectSelect.value === 'all' ? null : projectSelect.value.slice(8), query = $('search').value.trim().toLowerCase();
+  const matching = occurrences.filter(node => (!selected || node.projectId === selected) && (!query || node.label.toLowerCase().includes(query)) && (signalFilter === 'all' || signalFilter === 'coverage' || matchesSignal(node)));
+  for (const node of matching.slice(0, 80)) {
+    const checks = checksFor(node);
+    const advisory = checks.osv?.status === 'checked' ? `${checks.osv.advisories?.length || 0} returned by OSV` : checks.osv?.status === 'error' ? 'Lookup failed' : checks.osv?.status === 'unavailable' ? 'Source not verifiable by name/version' : 'Not checked';
+    const registry = checks.registry?.status === 'checked' ? [checks.registry.deprecated ? 'Deprecated' : null, checks.registry.newerLatestTag ? `Newer latest: ${checks.registry.latestTag}` : null].filter(Boolean).join(' · ') || 'Checked; no flag' : localDeprecationFor(node) ? 'Lockfile: deprecated (cached)' : checks.registry?.status === 'error' ? 'Lookup failed' : checks.registry?.status === 'unavailable' ? 'Public metadata unavailable' : 'Not checked';
+    tableRow(body, [node.name, node.version, advisory, registry]);
+  }
+  $('inventory-note').textContent = `Showing ${Math.min(80, matching.length)} of ${matching.length} occurrences for ${byId.get(projectSelect.value)?.label || 'all projects'}`;
+}
+function detail(label, value) {
+  if (value == null || value === '') return null;
+  const row = document.createElement('div'); row.className = 'detail-row';
+  const heading = document.createElement('b'); heading.textContent = label + ' · ';
+  row.append(heading, document.createTextNode(String(value)));
+  return row;
+}
+function inspectNode(node) {
+  const panel = $('inspector'); panel.replaceChildren();
+  const type = document.createElement('div'); type.className = 'entity-type'; type.textContent = node.kind;
+  const name = document.createElement('div'); name.className = 'entity-name'; name.textContent = node.label;
+  panel.append(type, name);
+  for (const item of [detail('Project', node.projectId && byId.get(`project:${node.projectId}`)?.label), detail('Local source status', node.sourceStatus), detail('Ecosystem', node.ecosystem), detail('Version', node.version), detail('Requested', node.requested), detail('Install path', node.location), detail('Source type', node.sourceKind), detail('Reference', node.reference), detail('Pinned commit', node.pinned == null ? null : node.pinned ? 'Yes' : 'No'), detail('Local commit', node.commit), detail('Branch', node.branch), detail('Origin', node.origin), detail('Cached upstream ref', node.upstream), detail('Upstream check', node.upstreamIsCached ? 'Cached local ref; live GitHub not queried' : null), detail('Ahead of cached upstream', node.ahead), detail('Behind cached upstream', node.behind)]) if (item) panel.append(item);
+  if (node.kind === 'project') {
+    const count = snapshot.findings.filter(finding => finding.projectId === node.projectId).length;
+    panel.append(detail('Coverage findings', count));
+  }
+  if (node.kind === 'occurrence' || node.kind === 'artifact' && node.ecosystem === 'npm') {
+    const checks = checksFor(node), osv = checks.osv, registry = checks.registry;
+    panel.append(detail('OSV advisory lookup', osv?.status === 'checked' ? `${osv.advisories?.length || 0} advisories returned · ${osv.checkedAt}` : osv?.status === 'error' ? `Failed · ${osv.reason}` : osv?.status === 'unavailable' ? osv.reason : 'Not checked'));
+    if (osv?.status === 'checked' && osv.advisories?.length) {
+      const list = document.createElement('ul'); list.className = 'advisory-links';
+      for (const advisory of osv.advisories.slice(0, 12)) {
+        const item = document.createElement('li'), link = document.createElement('a');
+        link.href = `https://osv.dev/vulnerability/${encodeURIComponent(advisory.id)}`;
+        link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = advisory.id;
+        item.append(link); list.append(item);
+      }
+      panel.append(list);
+      if (osv.advisories.length > 12) panel.append(detail('Additional advisory IDs', osv.advisories.length - 12));
+    }
+    panel.append(detail('npm registry lookup', registry?.status === 'checked' ? `Checked · ${registry.checkedAt}` : registry?.status === 'error' ? `Failed · ${registry.reason}` : registry?.status === 'unavailable' ? registry.reason : 'Not checked'));
+    if (localDeprecationFor(node)) panel.append(detail('Cached lockfile deprecation', localDeprecationFor(node)));
+    if (registry?.status === 'checked') {
+      for (const item of [detail('Deprecation message', registry.deprecated || 'None for this version'), detail('npm latest tag', registry.latestTag), detail('Newer latest tag', registry.newerLatestTag == null ? 'Unknown for this version format' : registry.newerLatestTag ? 'Yes' : 'No')]) if (item) panel.append(item);
+    }
+  }
+  const incident = (currentView?.edges || relations).filter(edge => edge.from === node.id || edge.to === node.id);
+  if (incident.length) {
+    const title = document.createElement('p'); title.textContent = `${incident.length} recorded relationship${incident.length === 1 ? '' : 's'}`; panel.append(title);
+    const list = document.createElement('ul'); list.className = 'relation-list';
+    for (const edge of incident.slice(0, 12)) { const item = document.createElement('li'); item.textContent = `${edge.from === node.id ? '→' : '←'} ${byId.get(edge.from === node.id ? edge.to : edge.from)?.label} · ${edge.kind}`; list.append(item); }
+    panel.append(list);
+  }
+}
+function inspectEdge(edge) {
+  const panel = $('inspector'); panel.replaceChildren();
+  const type = document.createElement('div'); type.className = 'entity-type'; type.textContent = 'Relationship';
+  const name = document.createElement('div'); name.className = 'entity-name'; name.textContent = `${byId.get(edge.from)?.label} → ${byId.get(edge.to)?.label}`;
+  panel.append(type, name);
+  for (const item of [detail('Kind', edge.kind), detail('Scope', edge.scope), detail('Requested', edge.requested), detail('Evidence', edge.source)]) if (item) panel.append(item);
+}
+function renderFindings() {
+  const list = $('findings'); list.replaceChildren();
+  $('finding-count').textContent = `${snapshot.findings.length} items`;
+  if (!snapshot.findings.length) { const p = document.createElement('p'); p.className = 'source-note'; p.textContent = 'No coverage findings in this snapshot.'; list.append(p); }
+  for (const finding of snapshot.findings) {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'finding-card';
+    const kind = document.createElement('span'); kind.className = 'finding-kind'; kind.textContent = finding.type.replaceAll('-', ' ');
+    const title = document.createElement('strong'); title.textContent = finding.title;
+    const meta = document.createElement('small'); meta.textContent = `${byId.get(`project:${finding.projectId}`)?.label || finding.projectId} · ${finding.evidence}${finding.detail ? ' · ' + finding.detail : ''}`;
+    button.append(kind, title, meta);
+    button.addEventListener('click', () => { mode = finding.type === 'root-unavailable' ? 'github' : 'js'; signalFilter = 'all'; projectSelect.value = `project:${finding.projectId}`; selectedId = projectSelect.value; selectedEdge = null; $('search').value = ''; renderAll(); const node = byId.get(selectedId); if (node) inspectNode(node); });
+    list.append(button);
+  }
+}
+
+function lensEdges() {
+  const allowed = mode === 'js' ? new Set(['declares', 'resolved-by']) : mode === 'npm' ? new Set(['depends-on', 'contains-workspace', 'sourced-from']) : new Set(['checked-out-at', 'tracks', 'uses-action', 'sourced-from', 'submodule']);
+  const result = relations.filter(edge => allowed.has(edge.kind) && (mode !== 'npm' || edge.kind !== 'sourced-from' || byId.get(edge.from)?.kind === 'occurrence'));
+  if (mode === 'github') {
+    for (const edge of result.filter(edge => edge.kind === 'sourced-from' && byId.get(edge.from)?.kind === 'occurrence')) {
+      const occurrence = byId.get(edge.from);
+      result.push({ from: `project:${occurrence.projectId}`, to: occurrence.id, kind: 'git package', source: 'lockfile Git URL' });
+    }
+  }
+  return result;
+}
+function networkView(query) {
+  const edges = lensEdges(), next = new Map();
+  for (const edge of edges) { if (!next.has(edge.from)) next.set(edge.from, []); next.get(edge.from).push(edge); }
+  for (const list of next.values()) list.sort((a, b) => edgePriority(a) - edgePriority(b) || (byId.get(a.to)?.label || '').localeCompare(byId.get(b.to)?.label || ''));
+  const all = projectSelect.value === 'all';
+  const roots = all ? projects.filter(project => next.has(project.id) || signalFilter === 'coverage' && projectsWithFindings.has(project.projectId)).map(project => project.id) : [projectSelect.value];
+  const depth = new Map(roots.map(id => [id, 0])), parent = new Map(), queue = [...roots];
+  for (let i = 0; i < queue.length; i++) for (const edge of next.get(queue[i]) || []) if (!depth.has(edge.to)) {
+    depth.set(edge.to, Math.min(3, depth.get(queue[i]) + 1)); parent.set(edge.to, edge); queue.push(edge.to);
+  }
+  const keep = new Set();
+  if (query || signalFilter !== 'all') {
+    const matches = [...depth.keys()].filter(id => (!query || byId.get(id)?.label.toLowerCase().includes(query)) && matchesSignal(byId.get(id))).slice(0, signalFilter === 'all' ? 8 : 12);
+    for (const target of matches) {
+      let current = target; keep.add(current);
+      while (parent.has(current)) { current = parent.get(current).from; keep.add(current); }
+      if (signalFilter === 'all') for (const edge of (next.get(target) || []).slice(0, 4)) keep.add(edge.to);
+    }
+    if (!matches.length) {
+      const artifacts = visibleArtifacts();
+      const source = signalFilter === 'advisory' ? 'OSV' : signalFilter === 'deprecated' || signalFilter === 'outdated' ? 'npm registry' : null;
+      const anyChecked = source === 'OSV' ? artifacts.some(node => checksFor(node).osv?.status === 'checked') : source === 'npm registry' ? artifacts.some(node => checksFor(node).registry?.status === 'checked') : true;
+      return { nodes: [], edges: [], depth, message: source && !anyChecked ? `${source} has not been checked for this scope. No alert or lifecycle conclusion is available.` : `No ${signalFilter === 'all' ? 'dependency' : signalFilter.replace('-', ' ')} matches in this lens and scope. Try All projects or another lens.` };
+    }
+  } else if (all) {
+    const limits = mode === 'github' ? [12, 15, 15, 10] : [10, 15, 15, 10], counts = [0, 0, 0, 0];
+    const available = roots.slice(0, limits[0]);
+    for (const root of available) { keep.add(root); counts[0]++; }
+    const visit = [...available];
+    for (let i = 0; i < visit.length; i++) {
+      const from = visit[i], layer = Math.min(3, (depth.get(from) || 0) + 1);
+      if (depth.get(from) >= 3) continue;
+      for (const edge of next.get(from) || []) {
+        if (keep.has(edge.to) || counts[layer] >= limits[layer]) continue;
+        keep.add(edge.to); counts[layer]++; visit.push(edge.to);
+      }
+    }
+  } else {
+    const root = roots[0]; keep.add(root);
+    const limits = [1, 14, 17, 12], counts = [1, 0, 0, 0], visit = [root];
+    for (let i = 0; i < visit.length; i++) {
+      const from = visit[i], layer = Math.min(3, (depth.get(from) || 0) + 1);
+      if (depth.get(from) >= 3) continue;
+      for (const edge of next.get(from) || []) {
+        if (keep.has(edge.to) || counts[layer] >= limits[layer]) continue;
+        keep.add(edge.to); counts[layer]++; visit.push(edge.to);
+      }
+    }
+  }
+  const visible = edges.filter(edge => keep.has(edge.from) && keep.has(edge.to));
+  const message = signalFilter !== 'all' ? `Showing ${signalFilter} paths from this snapshot. Select a node for its lookup evidence.` : query ? 'Showing matching paths and nearby relationships.' : all ? 'Showing a sample across projects. Search to trace matches across the full snapshot.' : 'Showing a focused path. Search to trace a dependency through the full snapshot.';
+  return { nodes: [...keep].map(id => byId.get(id)).filter(Boolean), edges: visible, depth, message };
+}
+
+const svgNS = 'http://www.w3.org/2000/svg';
+function svgElement(tag, attributes = {}) { const element = document.createElementNS(svgNS, tag); for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value); return element; }
+function drawGraph(view) {
+  const svg = $('graph'); svg.replaceChildren();
+  $('graph-empty').hidden = view.nodes.length > 0;
+  $('graph-empty').textContent = view.nodes.length ? '' : view.message;
+  if (!view.nodes.length) { $('graph-note').textContent = '0 visible nodes'; return; }
+  const defs = svgElement('defs'), marker = svgElement('marker', { id: 'arrow', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto-start-reverse' });
+  marker.append(svgElement('path', { d: 'M0 0 L10 5 L0 10 Z', fill: '#9db8a3' })); defs.append(marker); svg.append(defs);
+  const columns = new Map();
+  for (const node of view.nodes) { const layer = Math.min(view.depth.get(node.id) ?? 3, 3); if (!columns.has(layer)) columns.set(layer, []); columns.get(layer).push(node); }
+  for (const nodes of columns.values()) nodes.sort((a, b) => a.label.localeCompare(b.label));
+  const positions = new Map(), width = 230, height = 30, xPositions = [24, 302, 580, 858];
+  const titles = mode === 'js' ? ['Project', 'Requested dependency', 'Resolved occurrence', 'Further resolution'] : mode === 'npm' ? ['Project', 'Direct dependency', 'Transitive dependency', 'Further dependency / source'] : ['Project', 'Checkout / action / Git package', 'Repository / source', 'Further source'];
+  const title = svgElement('title'); title.textContent = `${mode} dependency graph with ${view.nodes.length} nodes and ${view.edges.length} edges. Use zoom controls and scroll the viewport to explore.`; svg.append(title);
+  for (let layer = 0; layer < 4; layer++) {
+    const heading = svgElement('text', { x: xPositions[layer], y: 25, class: 'column-title' }); heading.textContent = titles[layer]; svg.append(heading);
+    svg.append(svgElement('line', { x1: xPositions[layer], x2: xPositions[layer] + width, y1: 34, y2: 34, class: 'column-rule' }));
+  }
+  for (const [layer, nodes] of columns) {
+    const step = Math.min(36, 565 / Math.max(1, nodes.length));
+    const top = 57 + (570 - step * (nodes.length - 1) - height) / 2;
+    nodes.forEach((node, index) => positions.set(node.id, { x: xPositions[layer], y: top + index * step }));
+  }
+  const focused = selectedId && positions.has(selectedId) ? selectedId : null;
+  for (const edge of view.edges) {
+    const from = positions.get(edge.from), to = positions.get(edge.to); if (!from || !to) continue;
+    const x1 = from.x + width, y1 = from.y + height / 2, x2 = to.x, y2 = to.y + height / 2;
+    const bend = Math.max(35, (x2 - x1) * .48);
+    const active = selectedEdge === edge || focused && (edge.from === focused || edge.to === focused);
+    const path = svgElement('path', { d: `M${x1} ${y1} C${x1 + bend} ${y1} ${x2 - bend} ${y2} ${x2} ${y2}`, class: `edge${active ? ' active' : focused ? ' dim' : ''}`, 'marker-end': 'url(#arrow)', tabindex: '0', role: 'button', 'aria-label': `${byId.get(edge.from)?.label} to ${byId.get(edge.to)?.label}: ${edge.kind}` });
+    const title = svgElement('title'); title.textContent = `${edge.kind} · ${edge.source || 'recorded graph'}`; path.append(title);
+    const selectEdge = () => { selectedId = null; selectedEdge = edge; drawGraph(view); inspectEdge(edge); };
+    path.addEventListener('click', selectEdge); path.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectEdge(); } }); svg.append(path);
+  }
+  for (const node of view.nodes) {
+    const flags = signalFlags(node), status = ['advisory', 'deprecated', 'outdated', 'coverage', 'unknown'].find(key => flags[key]);
+    const statuses = Object.entries(flags).filter(([, value]) => value).map(([key]) => key).join(', ');
+    const pos = positions.get(node.id), group = svgElement('g', { class: `node ${node.kind}${status ? ` signal-${status}` : ''}${focused === node.id ? ' selected' : focused && !view.edges.some(edge => edge.from === focused && edge.to === node.id || edge.to === focused && edge.from === node.id) ? ' dim' : ''}`, transform: `translate(${pos.x} ${pos.y})`, tabindex: '0', role: 'button', 'aria-label': `${node.kind}: ${node.label}${statuses ? `; ${statuses}` : ''}` });
+    group.append(svgElement('rect', { width, height, rx: '5' }));
+    const label = svgElement('text', { x: '9', y: '19' }); label.textContent = node.label.length > (status ? 26 : 30) ? node.label.slice(0, status ? 24 : 28) + '…' : node.label; group.append(label);
+    if (status) group.append(svgElement('circle', { class: 'status-marker', cx: width - 10, cy: height / 2, r: 4 }));
+    const title = svgElement('title'); title.textContent = `${node.kind} · ${node.label}${statuses ? ` · ${statuses}` : ''}`; group.append(title);
+    const selectNode = () => { selectedId = node.id; selectedEdge = null; drawGraph(view); inspectNode(node); };
+    group.addEventListener('click', selectNode); group.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectNode(); } }); svg.append(group);
+  }
+  $('graph-note').textContent = `${view.nodes.length} nodes · ${view.edges.length} visible edges`;
+}
+function applyZoom(preserveCenter = false) {
+  const stage = $('graph-stage'), svg = $('graph');
+  if (fitZoom) {
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    $('zoom-level').textContent = 'Fit';
+    stage.scrollLeft = 0; stage.scrollTop = 0;
+    return;
+  }
+  const oldWidth = parseFloat(svg.style.width) || 1100, oldHeight = parseFloat(svg.style.height) || 650;
+  const centerX = (stage.scrollLeft + (stage.clientWidth || 1100) / 2) / oldWidth;
+  const centerY = (stage.scrollTop + (stage.clientHeight || 650) / 2) / oldHeight;
+  svg.style.width = `${Math.round(1100 * zoom)}px`;
+  svg.style.height = `${Math.round(650 * zoom)}px`;
+  $('zoom-level').textContent = `${Math.round(zoom * 100)}%`;
+  if (preserveCenter) {
+    stage.scrollLeft = Math.max(0, centerX * 1100 * zoom - (stage.clientWidth || 1100) / 2);
+    stage.scrollTop = Math.max(0, centerY * 650 * zoom - (stage.clientHeight || 650) / 2);
+  } else { stage.scrollLeft = 0; stage.scrollTop = 0; }
+}
+function changeZoom(factor) {
+  const wasFit = fitZoom;
+  if (wasFit) {
+    const stage = $('graph-stage');
+    zoom = Math.min((stage.clientWidth || 1100) / 1100, (stage.clientHeight || 650) / 650);
+    fitZoom = false;
+  }
+  zoom = Math.max(.3, Math.min(3, zoom * factor));
+  applyZoom(!wasFit);
+}
+function renderGraph() {
+  const query = $('search').value.trim().toLowerCase();
+  const view = networkView(query);
+  currentView = view;
+  const scope = byId.get(projectSelect.value)?.label || 'All projects';
+  $('graph-subtitle').textContent = `${scope} · ${mode === 'js' ? 'manifest requests and locked resolutions' : mode === 'npm' ? 'resolved npm / pnpm paths' : 'checkouts, actions, Git packages, and repositories'}`;
+  $('scope-hint').textContent = mode === 'js' ? 'Requested range → locked version' : mode === 'npm' ? 'Direct → transitive → source' : 'Checkout / action → repository';
+  for (const name of ['js', 'npm', 'github']) $(`${name}-tab`).setAttribute('aria-selected', String(mode === name));
+  drawGraph(view);
+  applyZoom();
+  if (!selectedId && !selectedEdge) { const panel = $('inspector'); panel.replaceChildren(); const p = document.createElement('p'); p.textContent = view.message; panel.append(p); }
+}
+function renderAll() { renderSignalBar(); renderGraph(); renderInventory(); }
+projectSelect.addEventListener('change', () => { selectedId = null; selectedEdge = null; renderAll(); });
+$('search').addEventListener('input', () => { selectedId = null; selectedEdge = null; renderAll(); });
+for (const name of ['js', 'npm', 'github']) $(`${name}-tab`).addEventListener('click', () => { mode = name; selectedId = null; selectedEdge = null; renderAll(); });
+for (const name of ['all', 'advisory', 'deprecated', 'outdated', 'unknown', 'coverage']) $(`signal-${name}`).addEventListener('click', () => { signalFilter = name; if (name !== 'all') projectSelect.value = 'all'; if (name !== 'all' && name !== 'coverage') mode = 'npm'; if (name === 'coverage') mode = 'js'; selectedId = null; selectedEdge = null; $('search').value = ''; renderAll(); });
+$('zoom-out').addEventListener('click', () => changeZoom(1 / 1.25));
+$('zoom-in').addEventListener('click', () => changeZoom(1.25));
+$('zoom-fit').addEventListener('click', () => { fitZoom = true; applyZoom(); });
+$('export').addEventListener('click', () => { const data = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' }), url = URL.createObjectURL(data), link = document.createElement('a'); link.href = url; link.download = 'supply-chain-snapshot.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); });
+renderCoverage(); renderFindings(); renderAll();
+</script>
+</body>
+</html>

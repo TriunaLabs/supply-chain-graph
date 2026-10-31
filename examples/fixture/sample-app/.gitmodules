@@ -1,0 +1,3 @@
+[submodule "sample-tool"]
+  path = tools/sample-tool
+  url = https://github.com/example/sample-tool.git
