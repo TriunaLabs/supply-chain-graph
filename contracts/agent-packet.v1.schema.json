@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TriunaLabs/supply-chain-graph/contracts/agent-packet.v1.schema.json",
+  "title": "Supply Chain Graph event packet v1",
+  "description": "A redacted packet built from an accepted policy result for a reviewer, a webhook, or a model. It is data, not a command. Each item has a stable event and finding ID, a transition, a project alias, the artifact or commit, one typed dependency path, evidence with citable IDs, the coverage state and rule, and the packet has a content hash. No absolute roots, source text, credentials, or private remote labels.",
+  "type": "object",
+  "required": ["schemaVersion", "packetId", "packetHash", "generatedAt", "policy", "scan", "gate", "items", "evidenceIds"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "packetId": { "type": "string", "pattern": "^pk_[0-9a-f]{16}$" },
+    "packetHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "policy": { "type": "object", "required": ["id", "version", "hash"], "additionalProperties": false, "properties": { "id": { "type": "string" }, "version": { "type": "string" }, "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" } } },
+    "scan": {
+      "type": "object",
+      "required": ["generatedAt", "sourceCommits", "freshness"],
+      "additionalProperties": false,
+      "properties": {
+        "generatedAt": { "type": "string" },
+        "sourceCommits": { "type": "object", "additionalProperties": { "type": ["string", "null"] } },
+        "freshness": { "type": "string", "enum": ["fresh", "stale", "unknown"] }
+      }
+    },
+    "gate": { "type": "string", "enum": ["pass", "fail", "not-configured"] },
+    "items": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+    "evidenceIds": { "type": "array", "items": { "type": "string", "pattern": "^ev_[0-9a-f]{16}$" } }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "required": ["eventId", "findingId", "transition", "baselineKnown", "ruleId", "actionability", "coverageState", "severity", "severitySource", "project", "artifact", "occurrence", "advisoryId", "checkedAt", "observed", "title", "evidence", "files", "dependencyPath", "reasons"],
+      "additionalProperties": false,
+      "properties": {
+        "eventId": { "type": "string", "pattern": "^e_[0-9a-f]{16}$" },
+        "findingId": { "type": "string", "pattern": "^f_[0-9a-f]{16}$" },
+        "transition": { "type": "string", "enum": ["observed", "still-observed", "no-longer-observed", "unknown"] },
+        "baselineKnown": { "type": "boolean" },
+        "ruleId": { "type": "string" },
+        "actionability": { "type": ["string", "null"], "enum": ["actionable", "needs-review", "informational", null] },
+        "coverageState": { "type": ["string", "null"], "enum": ["checked-and-none", "checked-with-results", "failed", "unqueried", "unsupported", "stale", null] },
+        "severity": { "type": ["string", "null"] },
+        "severitySource": { "type": ["string", "null"], "enum": ["osv", "policy", null] },
+        "project": { "type": ["string", "null"], "description": "Project ID or the opaque alias configured in the policy." },
+        "artifact": { "type": ["object", "null"], "required": ["ecosystem", "name", "version"], "additionalProperties": false, "properties": { "ecosystem": { "type": "string" }, "name": { "type": "string" }, "version": { "type": ["string", "null"] } } },
+        "occurrence": { "type": ["string", "null"] },
+        "advisoryId": { "type": ["string", "null"] },
+        "checkedAt": { "type": ["string", "null"] },
+        "observed": { "type": ["string", "null"] },
+        "title": { "type": "string" },
+        "evidence": { "type": "array", "items": { "type": "object", "required": ["id", "kind", "value"], "additionalProperties": false, "properties": { "id": { "type": "string", "pattern": "^ev_[0-9a-f]{16}$" }, "kind": { "type": "string", "enum": ["source", "lookup", "snapshot-finding", "reference"] }, "value": { "type": "string" } } } },
+        "files": { "type": "array", "description": "Repository-relative files a remediation may touch for this item; a proposal may not name others.", "items": { "type": "string" } },
+        "dependencyPath": { "type": "array", "items": { "type": "object", "required": ["kind", "label"], "additionalProperties": false, "properties": { "kind": { "type": "string" }, "label": { "type": "string" }, "via": { "type": ["string", "null"] } } } },
+        "reasons": { "type": "array", "items": { "type": "string" } },
+        "fixedBoundaries": { "type": "array", "items": { "type": "string" } },
+        "latestTag": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

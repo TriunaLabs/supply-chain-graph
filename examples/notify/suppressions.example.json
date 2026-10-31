@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "items": {
+    "f_0000000000000000": {
+      "status": "acknowledged",
+      "owner": "platform-team",
+      "reason": "Synthetic example: tracked in an internal ticket; acknowledgement does not resolve the finding.",
+      "createdAt": "2026-10-31T00:00:00Z",
+      "expiresAt": "2026-12-31T00:00:00Z"
+    }
+  }
+}

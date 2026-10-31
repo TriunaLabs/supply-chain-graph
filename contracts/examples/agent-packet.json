@@ -1,0 +1,471 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-31T00:00:00.000Z",
+  "policy": {
+    "id": "default",
+    "version": "1.0.0",
+    "hash": "b85059f0665d1d0caa02c8d555dd3c3a65b12570703979b7d126ab35bb5a5562"
+  },
+  "scan": {
+    "generatedAt": "2026-10-30T12:00:00.000Z",
+    "sourceCommits": {
+      "unlocked-tool": null,
+      "web-app": "0123456789abcdef0123456789abcdef01234567"
+    },
+    "freshness": "fresh"
+  },
+  "gate": "not-configured",
+  "items": [
+    {
+      "eventId": "e_1d9d215f543b9d93",
+      "findingId": "f_e0f6d79df1553964",
+      "transition": "observed",
+      "baselineKnown": false,
+      "ruleId": "osv-advisory",
+      "actionability": "actionable",
+      "coverageState": "checked-with-results",
+      "severity": "HIGH",
+      "severitySource": "osv",
+      "project": "web-app",
+      "artifact": {
+        "ecosystem": "npm",
+        "name": "vulnerable-lib",
+        "version": "1.0.2"
+      },
+      "occurrence": "node_modules/vulnerable-lib",
+      "advisoryId": "GHSA-xxxx-synthetic-0001",
+      "checkedAt": "2026-10-30T12:05:00.000Z",
+      "observed": "1.0.2",
+      "title": "GHSA-xxxx-synthetic-0001 affects vulnerable-lib@1.0.2",
+      "evidence": [
+        {
+          "id": "ev_c6c4d1c16d585d71",
+          "kind": "lookup",
+          "value": "OSV"
+        },
+        {
+          "id": "ev_b6db070907ba98a7",
+          "kind": "reference",
+          "value": "https://osv.dev/vulnerability/GHSA-xxxx-synthetic-0001"
+        }
+      ],
+      "files": [
+        "package-lock.json",
+        "package.json"
+      ],
+      "dependencyPath": [
+        {
+          "kind": "project",
+          "label": "web-app",
+          "via": null
+        },
+        {
+          "kind": "occurrence",
+          "label": "vulnerable-lib@1.0.2",
+          "via": "runtime"
+        }
+      ],
+      "reasons": [
+        "OSV returned this advisory for the exact installed version.",
+        "Synthetic advisory: crafted input causes unbounded recursion in vulnerable-lib.",
+        "OSV lists fixed boundaries 1.0.3; a lead, not proof that an update fixes every issue."
+      ],
+      "fixedBoundaries": [
+        "1.0.3"
+      ]
+    },
+    {
+      "eventId": "e_1e764fdb08111367",
+      "findingId": "f_257d987a9accbab5",
+      "transition": "observed",
+      "baselineKnown": false,
+      "ruleId": "npm-deprecation",
+      "actionability": "actionable",
+      "coverageState": "checked-with-results",
+      "severity": null,
+      "severitySource": null,
+      "project": "web-app",
+      "artifact": {
+        "ecosystem": "npm",
+        "name": "old-tool",
+        "version": "3.0.1"
+      },
+      "occurrence": "node_modules/old-tool",
+      "advisoryId": null,
+      "checkedAt": "2026-10-30T12:05:00.000Z",
+      "observed": "3.0.1",
+      "title": "old-tool@3.0.1 is deprecated on npm",
+      "evidence": [
+        {
+          "id": "ev_b0132b78f619f588",
+          "kind": "lookup",
+          "value": "npm registry"
+        }
+      ],
+      "files": [
+        "package-lock.json",
+        "package.json"
+      ],
+      "dependencyPath": [
+        {
+          "kind": "project",
+          "label": "web-app",
+          "via": null
+        },
+        {
+          "kind": "occurrence",
+          "label": "old-tool@3.0.1",
+          "via": "development"
+        }
+      ],
+      "reasons": [
+        "The public npm registry marks this version deprecated.",
+        "Demo fixture: use new-tool"
+      ]
+    },
+    {
+      "eventId": "e_337b5132fa9ef268",
+      "findingId": "f_26c0a1578192d4f6",
+      "transition": "observed",
+      "baselineKnown": false,
+      "ruleId": "coverage-gap",
+      "actionability": "needs-review",
+      "coverageState": "unqueried",
+      "severity": null,
+      "severitySource": null,
+      "project": "unlocked-tool",
+      "artifact": null,
+      "occurrence": null,
+      "advisoryId": null,
+      "checkedAt": null,
+      "observed": null,
+      "title": "1 declared JavaScript dependencies have no root lockfile",
+      "evidence": [
+        {
+          "id": "ev_dfe3d7cd079bbc4a",
+          "kind": "snapshot-finding",
+          "value": "package.json"
+        }
+      ],
+      "files": [
+        "package.json"
+      ],
+      "dependencyPath": [
+        {
+          "kind": "project",
+          "label": "unlocked-tool",
+          "via": null
+        }
+      ],
+      "reasons": [
+        "Coverage gap of type missing-lockfile.",
+        "Resolved versions are unknown until a supported lockfile exists."
+      ]
+    },
+    {
+      "eventId": "e_4ab9edeac9b63e43",
+      "findingId": "f_398462f06401c326",
+      "transition": "observed",
+      "baselineKnown": false,
+      "ruleId": "unsupported-ecosystem",
+      "actionability": "needs-review",
+      "coverageState": "unsupported",
+      "severity": null,
+      "severitySource": null,
+      "project": "web-app",
+      "artifact": {
+        "ecosystem": "PyPI",
+        "name": "requests",
+        "version": "2.32.0"
+      },
+      "occurrence": null,
+      "advisoryId": null,
+      "checkedAt": null,
+      "observed": "2.32.0",
+      "title": "requests@2.32.0 (PyPI) has no advisory lookup in this tool",
+      "evidence": [
+        {
+          "id": "ev_330347447e6e75e0",
+          "kind": "source",
+          "value": "requirements.txt"
+        }
+      ],
+      "files": [
+        "requirements.txt"
+      ],
+      "dependencyPath": [
+        {
+          "kind": "project",
+          "label": "web-app",
+          "via": null
+        },
+        {
+          "kind": "artifact",
+          "label": "requests@2.32.0",
+          "via": "runtime"
+        }
+      ],
+      "reasons": [
+        "This tool queries npm names and versions only; PyPI packages are recorded but never checked."
+      ]
+    },
+    {
+      "eventId": "e_6806aae3d2ec0d63",
+      "findingId": "f_e8f34a1a4fd4c131",
+      "transition": "observed",
+      "baselineKnown": false,
+      "ruleId": "newer-latest",
+      "actionability": "informational",
+      "coverageState": "checked-and-none",
+      "severity": null,
+      "severitySource": null,
+      "project": "web-app",
+      "artifact": {
+        "ecosystem": "npm",
+        "name": "clean-lib",
+        "version": "2.1.0"
+      },
+      "occurrence": "node_modules/clean-lib",
+      "advisoryId": null,
+      "checkedAt": "2026-10-30T12:05:00.000Z",
+      "observed": "2.1.0",
+      "title": "npm latest for clean-lib is 2.4.0",
+      "evidence": [
+        {
+          "id": "ev_2b6ea567b0bf1aa3",
+          "kind": "lookup",
+          "value": "npm registry"
+        }
+      ],
+      "files": [
+        "package-lock.json",
+        "package.json"
+      ],
+      "dependencyPath": [
+        {
+          "kind": "project",
+          "label": "web-app",
+          "via": null
+        },
+        {
+          "kind": "occurrence",
+          "label": "clean-lib@2.1.0",
+          "via": "runtime"
+        }
+      ],
+      "reasons": [
+        "A newer latest tag is informational; it does not establish that any advisory is fixed."
+      ],
+      "latestTag": "2.4.0"
+    },
+    {
+      "eventId": "e_8475621f2b17ca35",
+      "findingId": "f_9f0dd7b45eb99087",
+      "transition": "observed",
+      "baselineKnown": false,
+      "ruleId": "osv-lookup-failed",
+      "actionability": "needs-review",
+      "coverageState": "failed",
+      "severity": null,
+      "severitySource": null,
+      "project": "web-app",
+      "artifact": {
+        "ecosystem": "npm",
+        "name": "flaky-lib",
+        "version": "0.9.0"
+      },
+      "occurrence": "node_modules/flaky-lib",
+      "advisoryId": null,
+      "checkedAt": "2026-10-30T12:05:00.000Z",
+      "observed": "0.9.0",
+      "title": "OSV lookup failed for flaky-lib@0.9.0",
+      "evidence": [
+        {
+          "id": "ev_2ba1e7ce433246a7",
+          "kind": "lookup",
+          "value": "OSV"
+        }
+      ],
+      "files": [
+        "package-lock.json",
+        "package.json"
+      ],
+      "dependencyPath": [
+        {
+          "kind": "project",
+          "label": "web-app",
+          "via": null
+        },
+        {
+          "kind": "occurrence",
+          "label": "vulnerable-lib@1.0.2",
+          "via": "runtime"
+        },
+        {
+          "kind": "occurrence",
+          "label": "flaky-lib@0.9.0",
+          "via": "runtime"
+        }
+      ],
+      "reasons": [
+        "The advisory lookup did not complete (HTTP 503); advisory status is unknown, not clean."
+      ]
+    },
+    {
+      "eventId": "e_87fb24f2ab61952b",
+      "findingId": "f_a4dc1cbe72875921",
+      "transition": "observed",
+      "baselineKnown": false,
+      "ruleId": "unpinned-action",
+      "actionability": "actionable",
+      "coverageState": "checked-with-results",
+      "severity": "medium",
+      "severitySource": "policy",
+      "project": "web-app",
+      "artifact": {
+        "ecosystem": "github-actions",
+        "name": "actions/checkout",
+        "version": "v4"
+      },
+      "occurrence": ".github/workflows/ci.yml",
+      "advisoryId": null,
+      "checkedAt": null,
+      "observed": "v4",
+      "title": "actions/checkout@v4 is referenced by a mutable tag or branch",
+      "evidence": [
+        {
+          "id": "ev_e8315165c182ada2",
+          "kind": "source",
+          "value": ".github/workflows/ci.yml"
+        }
+      ],
+      "files": [
+        ".github/workflows/ci.yml"
+      ],
+      "dependencyPath": [
+        {
+          "kind": "project",
+          "label": "web-app",
+          "via": null
+        },
+        {
+          "kind": "action",
+          "label": "actions/checkout@v4",
+          "via": "uses-action"
+        },
+        {
+          "kind": "repository",
+          "label": "actions/checkout",
+          "via": "sourced-from"
+        }
+      ],
+      "reasons": [
+        "A tag or branch can move after review; pin third-party actions to a reviewed full commit SHA."
+      ]
+    },
+    {
+      "eventId": "e_d5e2679f524b17d8",
+      "findingId": "f_c5d59fadc9420d2a",
+      "transition": "observed",
+      "baselineKnown": false,
+      "ruleId": "npm-deprecation-cached",
+      "actionability": "needs-review",
+      "coverageState": "unqueried",
+      "severity": null,
+      "severitySource": null,
+      "project": "web-app",
+      "artifact": {
+        "ecosystem": "npm",
+        "name": "legacy-helper",
+        "version": "4.2.0"
+      },
+      "occurrence": "node_modules/legacy-helper",
+      "advisoryId": null,
+      "checkedAt": null,
+      "observed": "4.2.0",
+      "title": "legacy-helper@4.2.0 carries a deprecation message in the lockfile",
+      "evidence": [
+        {
+          "id": "ev_43a21e637f50c31b",
+          "kind": "source",
+          "value": "package-lock.json"
+        }
+      ],
+      "files": [
+        "package-lock.json",
+        "package.json"
+      ],
+      "dependencyPath": [
+        {
+          "kind": "project",
+          "label": "web-app",
+          "via": null
+        },
+        {
+          "kind": "occurrence",
+          "label": "clean-lib@2.1.0",
+          "via": "runtime"
+        },
+        {
+          "kind": "occurrence",
+          "label": "legacy-helper@4.2.0",
+          "via": "runtime"
+        }
+      ],
+      "reasons": [
+        "The message comes from the lockfile and is cached until a registry check confirms it.",
+        "Demo fixture: cached message"
+      ]
+    },
+    {
+      "eventId": "e_e022d81f439509f9",
+      "findingId": "f_045cd32ff6cc8764",
+      "transition": "observed",
+      "baselineKnown": false,
+      "ruleId": "osv-unqueried",
+      "actionability": "needs-review",
+      "coverageState": "unqueried",
+      "severity": null,
+      "severitySource": null,
+      "project": "web-app",
+      "artifact": null,
+      "occurrence": null,
+      "advisoryId": null,
+      "checkedAt": null,
+      "observed": "0123456789abcdef0123456789abcdef01234567",
+      "title": "1 npm package version in web-app have no advisory lookup",
+      "evidence": [
+        {
+          "id": "ev_56ff9e5ef62e1168",
+          "kind": "lookup",
+          "value": "OSV"
+        }
+      ],
+      "files": [],
+      "dependencyPath": [
+        {
+          "kind": "project",
+          "label": "web-app",
+          "via": null
+        }
+      ],
+      "reasons": [
+        "No OSV query has been recorded for these versions. Unknown is not clean; run enrich from a machine allowed to share package names."
+      ]
+    }
+  ],
+  "evidenceIds": [
+    "ev_2b6ea567b0bf1aa3",
+    "ev_2ba1e7ce433246a7",
+    "ev_330347447e6e75e0",
+    "ev_43a21e637f50c31b",
+    "ev_56ff9e5ef62e1168",
+    "ev_b0132b78f619f588",
+    "ev_b6db070907ba98a7",
+    "ev_c6c4d1c16d585d71",
+    "ev_dfe3d7cd079bbc4a",
+    "ev_e8315165c182ada2"
+  ],
+  "packetId": "pk_982eb810546ba4a9",
+  "packetHash": "982eb810546ba4a9b9a8aef8fae904cdce394bf3725a7ce11c97dd69d909081a"
+}
