@@ -21,11 +21,11 @@ node scripts/supply-chain.mjs render --snapshot examples/demo-snapshot.json --ou
 
 ## How the pieces fit
 
-Two figures, drawn from the repository as of commit b9a2b37. Solid boxes exist in this repository; dashed boxes are yours to build. Each figure plays as a 10 to 12 second loop and holds one frame when your system asks for reduced motion; the still versions are linked for reading, since the text is small at this width.
+Two figures, drawn from the repository as of commit b9a2b37. Solid boxes exist in this repository; dashed boxes are yours to build and never run. Each figure is a workflow with a live run that loops every 10 to 11 seconds and holds one frame when your system asks for reduced motion; the still versions are linked for reading, since the text is small at this width.
 
-[![Five stages run from chosen project folders through an offline scan, optional advisory lookups and a graph dashboard to a policy result and candidate events.](docs/walkthrough/local-workflow.svg)](docs/walkthrough/local-workflow-still.svg)
+[![A workflow runs from folders a person chooses through an offline scan and an opt-in network lookup to a dashboard, a policy result and candidate events.](docs/walkthrough/local-workflow.svg)](docs/walkthrough/local-workflow-still.svg)
 
-[![Today's command line tools feed a user-owned CI flow where policy and a person's review come before any write job; dashed parts are yours to build.](docs/walkthrough/github-actions-flow.svg)](docs/walkthrough/github-actions-flow-still.svg)
+[![A workflow runs from a CI trigger through a scan and a redacted packet to a person's review; the model and the write job are dashed because you build them.](docs/walkthrough/github-actions-flow.svg)](docs/walkthrough/github-actions-flow-still.svg)
 
 The figures are snapshots of the repository at that commit, with no script in them. When a dashed part ships, the figure needs redrawing; the commands and examples they name are checked by the test suite, the drawings are not.
 
