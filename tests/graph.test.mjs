@@ -137,6 +137,15 @@ test('a project folder inside a larger repository records the enclosing reposito
   assert.equal(nestedCheckout.commit, topCheckout.commit);
 });
 
+test('the checked-in demo dashboard is the render of the checked-in demo snapshot', async () => {
+  const normalize = text => text.replace(/\r\n/g, '\n');
+  const rendered = run('render', '--snapshot', resolve(base, 'examples/demo-snapshot.json'), '--out', '-');
+  const committed = await readFile(resolve(base, 'examples/demo-dashboard.html'), 'utf8');
+  assert.equal(normalize(committed), normalize(rendered), 'examples/demo-dashboard.html is stale; run: node scripts/supply-chain.mjs render --snapshot examples/demo-snapshot.json --out examples/demo-dashboard.html');
+  const snapshot = JSON.parse(await readFile(resolve(base, 'examples/demo-snapshot.json'), 'utf8'));
+  assert.ok(!snapshot.nodes.some(node => node.rootPath || node.repoRoot || node.kind === 'checkout'), 'the demo snapshot carries no local paths or Git metadata');
+});
+
 test('diff reports checked advisory signals and does not resolve them after a failed lookup', async () => {
   const previous = { schemaVersion: 1, generatedAt: '2026-10-29T00:00:00Z', findings: [], nodes: [{ id: 'project:check', kind: 'project', projectId: 'check' }, { id: 'occ:check:alpha', kind: 'occurrence', projectId: 'check', name: 'alpha', version: '1.0.0', location: 'node_modules/alpha' }, { id: 'npm:alpha@1.0.0', kind: 'artifact', ecosystem: 'npm', name: 'alpha', version: '1.0.0' }], edges: [{ from: 'occ:check:alpha', to: 'npm:alpha@1.0.0', kind: 'resolves-to' }] };
   const current = { ...previous, generatedAt: '2026-10-30T00:00:00Z', enrichment: { packages: { 'npm:alpha@1.0.0': { osv: { status: 'checked', checkedAt: '2026-10-30T00:00:00Z', advisories: [{ id: 'OSV-EXAMPLE' }] }, registry: { status: 'checked', checkedAt: '2026-10-30T00:00:00Z', deprecated: 'Use another package', latestTag: '2.0.0', newerLatestTag: true } } } } };

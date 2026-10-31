@@ -488,7 +488,32 @@ try {
     const port = option('port') ? Number(option('port')) : 8765;
     if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Port must be between 1024 and 65535');
     const token = randomBytes(32).toString('hex');
-    let busy = false, triageBusy = false;
+    let busy = false, triageBusy = false, pickerBusy = false;
+    const pickerPrompt = 'Choose a project folder for Supply Chain Graph';
+    const pickerCommand = () => {
+      const custom = process.env.SUPPLY_CHAIN_FOLDER_PICKER?.trim();
+      if (custom) return custom.startsWith('[') ? JSON.parse(custom) : custom.split(/\s+/);
+      if (process.platform === 'win32') {
+        const script = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Add-Type -AssemblyName System.Windows.Forms; $dialog = New-Object System.Windows.Forms.FolderBrowserDialog; $dialog.Description = '${pickerPrompt}'; $dialog.ShowNewFolderButton = $false; if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($dialog.SelectedPath) }`;
+        return ['powershell.exe', '-NoProfile', '-NonInteractive', '-STA', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')];
+      }
+      if (process.platform === 'darwin') return ['osascript', '-e', `POSIX path of (choose folder with prompt "${pickerPrompt}")`];
+      return ['zenity', '--file-selection', '--directory', `--title=${pickerPrompt}`];
+    };
+    const pickFolder = () => new Promise((done, reject) => {
+      const [command, ...argv] = pickerCommand();
+      let out = '', err = '';
+      const child = spawn(command, argv, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, timeout: 10 * 60 * 1000 });
+      child.stdout.on('data', chunk => { out += chunk; });
+      child.stderr.on('data', chunk => { err += chunk; });
+      child.once('error', error => reject(new Error(error.code === 'ENOENT' ? `No folder dialog is available on this machine (${command} was not found). Paste the absolute path instead.` : error.message)));
+      child.once('close', code => {
+        const chosen = out.trim();
+        if (chosen) return done(chosen);
+        if (code === 0 || code === 1 || code === null || /cancel/i.test(err)) return done(null);
+        reject(new Error(`The folder dialog exited with code ${code}${err.trim() ? `: ${err.trim().slice(0, 200)}` : ''}`));
+      });
+    });
     const server = createServer(async (request, response) => {
       const send = (status, body, type = 'application/json; charset=utf-8') => { response.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }); response.end(body); };
       const host = request.headers.host;
@@ -507,8 +532,25 @@ try {
         try { return send(200, JSON.stringify(await readTriage())); }
         catch (error) { return send(500, JSON.stringify({ error: error.message })); }
       }
-      if (request.method !== 'POST' || !['/api/set-root', '/api/triage', '/api/open-folder'].includes(requestUrl.pathname)) return send(404, JSON.stringify({ error: 'Not found' }));
+      if (request.method !== 'POST' || !['/api/set-root', '/api/triage', '/api/open-folder', '/api/pick-folder'].includes(requestUrl.pathname)) return send(404, JSON.stringify({ error: 'Not found' }));
       if (request.headers['content-type']?.split(';')[0] !== 'application/json') return send(403, JSON.stringify({ error: 'JSON required' }));
+      if (requestUrl.pathname === '/api/pick-folder') {
+        if (pickerBusy) return send(409, JSON.stringify({ error: 'A folder dialog is already open on this machine' }));
+        pickerBusy = true;
+        try {
+          let body = '';
+          for await (const chunk of request) { body += chunk; if (body.length > 2048) throw new Error('Request is too large'); }
+          const chosen = await pickFolder();
+          if (!chosen) return send(200, JSON.stringify({ cancelled: true }));
+          const folder = await realpath(resolve(chosen)).catch(() => null);
+          if (!folder || !(await stat(folder).catch(() => null))?.isDirectory()) throw new Error('The chosen path is not an accessible directory');
+          if (folder === parse(folder).root) throw new Error('Choose a project folder, not a whole drive or filesystem root');
+          const name = folder.split(/[\\/]/).filter(Boolean).at(-1) || '';
+          const suggestedId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^[^a-z0-9]+|-+$/g, '') || 'project';
+          return send(200, JSON.stringify({ path: folder, suggestedId, suggestedLabel: name }));
+        } catch (error) { return send(400, JSON.stringify({ error: error.message })); }
+        finally { pickerBusy = false; }
+      }
       if (requestUrl.pathname === '/api/open-folder') {
         try {
           let body = '';

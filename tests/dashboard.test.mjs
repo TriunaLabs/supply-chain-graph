@@ -13,7 +13,7 @@ class Element {
   setAttribute(name, value) { this.attributes[name] = String(value); }
   addEventListener(name, handler) { this.listeners[name] = handler; }
 }
-async function executeDashboard(snapshot) {
+async function executeDashboard(snapshot, globals = {}) {
   const elements = new Map();
   const document = {
     getElementById: id => { if (!elements.has(id)) elements.set(id, new Element(id)); return elements.get(id); },
@@ -22,9 +22,57 @@ async function executeDashboard(snapshot) {
     createTextNode: text => ({ textContent: text })
   };
   const source = await readFile(resolve(base, 'assets/dashboard.js'), 'utf8');
-  vm.runInNewContext(`const snapshot = ${JSON.stringify(snapshot)};\n${source}`, { document, console });
+  vm.runInNewContext(`const snapshot = ${JSON.stringify(snapshot)};\n${source}`, { document, console, ...globals });
   return elements;
 }
+const minimal = () => ({ generatedAt: '2026-10-31T00:00:00Z', findings: [], coverage: [], enrichment: { packages: {} }, nodes: [{ id: 'project:app', kind: 'project', label: 'App', projectId: 'app', rootPath: '/portfolio/app' }], edges: [] });
+
+test('Add project folder opens the root form; the local picker fills it and waits for Add and scan', async () => {
+  const staticElements = await executeDashboard(minimal());
+  staticElements.get('add-project').listeners.click();
+  assert.ok(staticElements.get('inspector').children.some(item => item.tag === 'code' && item.textContent.includes('serve --config')));
+  assert.ok(!staticElements.get('inspector').children.some(item => item.className === 'root-form'));
+  assert.ok(staticElements.get('inspector').children.some(item => item.tag === 'p' && /Choose project folder opens a folder dialog on your machine/.test(item.textContent)));
+
+  const calls = [];
+  const fetch = async (url, init = {}) => {
+    calls.push({ url, method: init.method || 'GET', body: init.body, token: init.headers?.['x-supply-chain-token'] });
+    if (url === '/api/triage') return { ok: true, status: 200, json: async () => ({ items: {} }) };
+    if (url === '/api/pick-folder') return { ok: true, status: 200, json: async () => ({ path: 'C:\\portfolio\\chosen-app', suggestedId: 'chosen-app', suggestedLabel: 'chosen-app' }) };
+    throw new Error(`unexpected request ${url}`);
+  };
+  const elements = await executeDashboard(minimal(), { supplyChainLocal: { token: 'test-token' }, fetch });
+  elements.get('add-project').listeners.click();
+  const form = elements.get('inspector').children.find(item => item.className === 'root-form');
+  assert.ok(form, 'local mode shows the root form');
+  const inputs = Object.fromEntries(form.children.filter(item => item.tag === 'label').map(item => [item.children[0].name, item.children[0]]));
+  const pick = form.children.find(item => item.tag === 'button' && item.textContent === 'Choose project folder…');
+  const submit = form.children.find(item => item.tag === 'button' && item.type === 'submit');
+  assert.ok(pick && submit);
+  assert.equal(submit.textContent, 'Add and scan');
+  assert.equal(inputs.root.value, '');
+  await pick.listeners.click();
+  assert.equal(inputs.root.value, 'C:\\portfolio\\chosen-app');
+  assert.equal(inputs.id.value, 'chosen-app');
+  assert.equal(inputs.label.value, 'chosen-app');
+  const pickCall = calls.find(call => call.url === '/api/pick-folder');
+  assert.equal(pickCall.method, 'POST');
+  assert.equal(pickCall.token, 'test-token');
+  assert.ok(!calls.some(call => call.url === '/api/set-root'), 'picking a folder saves nothing');
+  const status = form.children.find(item => item.tag === 'p' && /Folder chosen/.test(item.textContent));
+  assert.match(status.textContent, /click Add and scan to save it and scan/);
+
+  const cancelled = await executeDashboard(minimal(), { supplyChainLocal: { token: 'test-token' }, fetch: async url => ({ ok: true, status: 200, json: async () => url === '/api/pick-folder' ? { cancelled: true } : { items: {} } }) });
+  const projectNode = cancelled.get('graph').children.find(item => item.tag === 'g' && item.attributes['aria-label']?.startsWith('project: App'));
+  projectNode.listeners.click();
+  cancelled.get('inspector').children.find(item => item.textContent === 'Set or change root').listeners.click();
+  const editForm = cancelled.get('inspector').children.find(item => item.className === 'root-form');
+  const editInputs = Object.fromEntries(editForm.children.filter(item => item.tag === 'label').map(item => [item.children[0].name, item.children[0]]));
+  assert.equal(editForm.children.find(item => item.tag === 'button' && item.type === 'submit').textContent, 'Save root and rescan');
+  await editForm.children.find(item => item.tag === 'button' && item.textContent === 'Choose project folder…').listeners.click();
+  assert.equal(editInputs.root.value, '/portfolio/app');
+  assert.ok(editForm.children.some(item => item.tag === 'p' && /No folder chosen. The form is unchanged./.test(item.textContent)));
+});
 test('four supply-chain lenses show distinct relationships, column headings, and working zoom', async () => {
   const sample = {
     generatedAt: new Date().toISOString(), findings: [{ id: 'sample-gap', projectId: 'sample', type: 'coverage', title: 'Source gap', evidence: 'fixture' }], coverage: [{ projectId: 'sample', npm: 'resolved-v3', git: 'not-found' }],

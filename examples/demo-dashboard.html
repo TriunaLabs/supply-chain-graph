@@ -26,6 +26,7 @@ main{padding:25px 34px 0;max-width:1900px;margin:auto}.workspace-heading{display
 .signal-buttons #signal-critical strong{color:#9c262b}.node.signal-critical rect{stroke:#a92e35;stroke-width:2.5}.node.signal-critical .status-marker{fill:#a92e35}
 .triage-form{display:grid;gap:8px;margin:8px 0 16px}.triage-form label{display:grid;gap:4px;font-size:10px;color:#536a5e}.triage-form select,.triage-form textarea{width:100%;border:1px solid #cddccf;border-radius:5px;padding:7px;font-size:11px;background:#fff}.triage-form textarea{min-height:65px;resize:vertical}.triage-form button{border:1px solid #52866a;border-radius:5px;background:#e8f3e9;padding:8px;font-size:11px}.triage-form p{margin:0!important}
 @media(max-width:1100px){main{padding:20px 18px 0}.app-header{padding:0 20px}.workspace{grid-template-columns:minmax(0,1fr) 300px}.workspace-heading p{display:none}.scope-hint{display:none}.graph-controls input{min-width:180px}.graph-toolbar{height:auto;min-height:64px;flex-wrap:wrap;padding-top:8px}.view-tabs{min-height:36px;max-width:100%;overflow-x:auto;white-space:nowrap}}@media(max-width:760px){.app-header{height:65px;padding:0 14px}.brand{font-size:17px}.brand-mark{width:30px;height:34px;font-size:28px}.header-status{display:none}.app-header .quiet{font-size:10px;padding:8px}main{padding:19px 10px 0}.workspace-heading{margin:0 6px 16px;gap:10px}.workspace-heading h1{font-size:27px}.snapshot-stamp{display:none}.workspace{display:flex;flex-direction:column;height:auto}.graph-area{height:610px;border-right:0;border-bottom:1px solid var(--line)}.evidence-panel{height:420px}.graph-toolbar{padding:8px 12px 0}.graph-controls{padding:9px 12px}.graph-controls label{flex:1}.graph-controls select,.graph-controls input{width:100%;min-width:0}.graph-footer{align-items:start;flex-direction:column}.data-grid{grid-template-columns:1fr}.app-footer span:last-child{display:none}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.section-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.section-actions span{font-size:10px;color:#8a948a}
 </style>
 </head>
 <body>
@@ -52,7 +53,7 @@ main{padding:25px 34px 0;max-width:1900px;margin:auto}.workspace-heading{display
       </aside>
     </section>
     <section class="data-section"><div class="section-heading"><div><span class="eyebrow">EVIDENCE INDEX</span><h2>What the scan found.</h2></div><span id="inventory-note"></span></div><div class="data-grid"><div class="data-card"><h3>Project coverage</h3><div class="table-wrap"><table><thead><tr><th>Project</th><th>Manifest / lock</th><th>JS source</th><th>Git</th><th>Actions</th><th>Python</th></tr></thead><tbody id="coverage"></tbody></table></div></div><div class="data-card"><h3>Selected package occurrences</h3><div class="table-wrap"><table><thead><tr><th>Package</th><th>Version</th><th>Advisory check</th><th>npm status</th></tr></thead><tbody id="inventory"></tbody></table></div></div></div></section>
-    <section class="data-section discovery-section" aria-labelledby="discovery-title"><div class="section-heading"><div><span class="eyebrow">SOURCE DISCOVERY</span><h2 id="discovery-title">Roots to review.</h2></div><span id="discovery-note"></span></div><p class="source-note">Discovery lists local repositories and manifests. A nested manifest is a scan candidate, not proof that it is a separate product. Choose a row to set its root.</p><div class="data-card"><div class="table-wrap"><table><thead><tr><th>Source</th><th>Evidence</th><th>Coverage</th><th>Action</th></tr></thead><tbody id="discovery"></tbody></table></div></div></section>
+    <section class="data-section discovery-section" aria-labelledby="discovery-title"><div class="section-heading"><div><span class="eyebrow">SOURCE DISCOVERY</span><h2 id="discovery-title">Roots to review.</h2></div><div class="section-actions"><span id="discovery-note"></span><button id="add-project" class="quiet" type="button">Add project folder</button></div></div><p class="source-note">Discovery lists local repositories and manifests. A nested manifest is a scan candidate, not proof that it is a separate product. Choose a row to set its root, or use Add project folder for a new root. In local editing mode the form can open a folder dialog on this machine; nothing is saved until you click Add and scan.</p><div class="data-card"><div class="table-wrap"><table><thead><tr><th>Source</th><th>Evidence</th><th>Coverage</th><th>Action</th></tr></thead><tbody id="discovery"></tbody></table></div></div></section>
     <section class="data-section" aria-labelledby="edge-index-title"><div class="section-heading"><div><span class="eyebrow">FULL RELATIONSHIP INDEX</span><h2 id="edge-index-title">Every recorded edge.</h2></div><span id="edge-index-note" role="status"></span></div><p class="source-note">Includes all edge types across the four graph lenses. Uses the scope, status, and search above. Select a row to inspect its evidence; the network drawing shows a bounded path sample.</p><div class="data-card"><div class="table-wrap"><table><thead><tr><th>From</th><th>Relationship</th><th>To</th><th>Evidence</th><th>Inspect</th></tr></thead><tbody id="edges-table"></tbody></table></div><div class="index-pages"><button id="edge-prev" type="button">← Previous</button><span id="edge-page-label" role="status"></span><button id="edge-next" type="button">Next →</button></div></div></section>
     <footer class="app-footer"><span>Triuna Labs, Inc. · Local software supply chain</span><span>Project → resolved version → source</span><span>Coverage is evidence, not assurance.</span></footer>
   </main>
@@ -249,11 +250,12 @@ function appendTriage(panel, key) {
 function rootEditor({ id = '', label = '', root = '' } = {}) {
   const panel = $('inspector'); panel.replaceChildren();
   const title = document.createElement('div'); title.className = 'entity-name'; title.textContent = 'Set a source root'; panel.append(title);
-  const note = document.createElement('p'); note.textContent = localService ? 'This saves the private portfolio config and rescans local sources. Advisory lookups are not run automatically.' : 'This saved HTML is read-only. Start the local editing server from the skill to save roots, then open its localhost URL.'; panel.append(note);
+  const note = document.createElement('p'); note.textContent = localService ? 'This saves the private portfolio config and rescans local sources. Advisory lookups are not run automatically.' : 'This saved HTML is read-only. Start the local editing server from the skill to save roots, then open its localhost URL. In that mode, Choose project folder opens a folder dialog on your machine and fills this form; nothing is saved until you click Add and scan.'; panel.append(note);
   if (!localService) {
     const code = document.createElement('code'); code.textContent = 'node scripts/supply-chain.mjs serve --config PRIVATE_CONFIG --snapshot PRIVATE_SNAPSHOT --out PRIVATE_DASHBOARD'; panel.append(code);
     return;
   }
+  const isNew = !id;
   const form = document.createElement('form'); form.className = 'root-form';
   const fields = [['Project ID', id, 'id'], ['Display name', label, 'label'], ['Absolute root directory', root, 'root']];
   const inputs = {};
@@ -261,7 +263,24 @@ function rootEditor({ id = '', label = '', root = '' } = {}) {
     const wrapper = document.createElement('label'); wrapper.textContent = caption;
     const input = document.createElement('input'); input.value = value; input.required = key !== 'label'; input.name = key; wrapper.append(input); form.append(wrapper); inputs[key] = input;
   }
-  const submit = document.createElement('button'); submit.type = 'submit'; submit.textContent = 'Save root and rescan'; form.append(submit);
+  const submit = document.createElement('button'); submit.type = 'submit'; submit.textContent = isNew ? 'Add and scan' : 'Save root and rescan';
+  const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'action-button'; pick.textContent = 'Choose project folder…';
+  const pickStatus = document.createElement('p'); pickStatus.setAttribute('role', 'status'); pickStatus.textContent = `Opens a folder dialog on this machine and fills the path above. Nothing is saved until you click ${submit.textContent}.`;
+  pick.addEventListener('click', async () => {
+    pick.disabled = true; pickStatus.textContent = 'Waiting for the folder dialog on this machine…';
+    try {
+      const response = await fetch('/api/pick-folder', { method: 'POST', headers: { 'content-type': 'application/json', 'x-supply-chain-token': localService.token }, body: '{}' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'The folder dialog failed');
+      if (result.cancelled) { pickStatus.textContent = 'No folder chosen. The form is unchanged.'; return; }
+      inputs.root.value = result.path;
+      if (!inputs.id.value.trim()) inputs.id.value = result.suggestedId || '';
+      if (!inputs.label.value.trim()) inputs.label.value = result.suggestedLabel || '';
+      pickStatus.textContent = `Folder chosen: ${result.path}. Review the ID and name, then click ${submit.textContent} to save it and scan.`;
+    } catch (error) { pickStatus.textContent = error.message; }
+    finally { pick.disabled = false; }
+  });
+  form.append(pick, pickStatus, submit);
   const status = document.createElement('p'); status.setAttribute('role', 'status'); form.append(status);
   form.addEventListener('submit', async event => {
     event.preventDefault(); submit.disabled = true; status.textContent = 'Scanning local files…';
@@ -740,6 +759,7 @@ $('edge-next').addEventListener('click', () => { edgePage++; renderEdgeIndex(); 
 $('search').addEventListener('input', () => { edgePage = 0; selectedId = null; selectedEdge = null; renderAll(); });
 for (const name of ['js', 'source', 'npm', 'github']) $(`${name}-tab`).addEventListener('click', () => { mode = name; edgePage = 0; selectedId = null; selectedEdge = null; renderAll(); });
 for (const name of ['all', 'critical', 'advisory', 'deprecated', 'outdated', 'unknown', 'coverage']) $(`signal-${name}`).addEventListener('click', () => { signalFilter = name; edgePage = 0; if (name !== 'all') { projectSelect.value = 'all'; graphDetail = 'paths'; } else if (projectSelect.value === 'all') graphDetail = 'direct'; if (name !== 'all' && name !== 'coverage') mode = 'npm'; if (name === 'coverage') mode = 'js'; selectedId = null; selectedEdge = null; $('search').value = ''; renderAll(); });
+$('add-project').addEventListener('click', () => { rootEditor(); $('inspector').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); });
 $('zoom-out').addEventListener('click', () => changeZoom(1 / 1.25));
 $('zoom-in').addEventListener('click', () => changeZoom(1.25));
 $('zoom-fit').addEventListener('click', () => { fitZoom = true; applyZoom(); });

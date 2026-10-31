@@ -190,11 +190,12 @@ function appendTriage(panel, key) {
 function rootEditor({ id = '', label = '', root = '' } = {}) {
   const panel = $('inspector'); panel.replaceChildren();
   const title = document.createElement('div'); title.className = 'entity-name'; title.textContent = 'Set a source root'; panel.append(title);
-  const note = document.createElement('p'); note.textContent = localService ? 'This saves the private portfolio config and rescans local sources. Advisory lookups are not run automatically.' : 'This saved HTML is read-only. Start the local editing server from the skill to save roots, then open its localhost URL.'; panel.append(note);
+  const note = document.createElement('p'); note.textContent = localService ? 'This saves the private portfolio config and rescans local sources. Advisory lookups are not run automatically.' : 'This saved HTML is read-only. Start the local editing server from the skill to save roots, then open its localhost URL. In that mode, Choose project folder opens a folder dialog on your machine and fills this form; nothing is saved until you click Add and scan.'; panel.append(note);
   if (!localService) {
     const code = document.createElement('code'); code.textContent = 'node scripts/supply-chain.mjs serve --config PRIVATE_CONFIG --snapshot PRIVATE_SNAPSHOT --out PRIVATE_DASHBOARD'; panel.append(code);
     return;
   }
+  const isNew = !id;
   const form = document.createElement('form'); form.className = 'root-form';
   const fields = [['Project ID', id, 'id'], ['Display name', label, 'label'], ['Absolute root directory', root, 'root']];
   const inputs = {};
@@ -202,7 +203,24 @@ function rootEditor({ id = '', label = '', root = '' } = {}) {
     const wrapper = document.createElement('label'); wrapper.textContent = caption;
     const input = document.createElement('input'); input.value = value; input.required = key !== 'label'; input.name = key; wrapper.append(input); form.append(wrapper); inputs[key] = input;
   }
-  const submit = document.createElement('button'); submit.type = 'submit'; submit.textContent = 'Save root and rescan'; form.append(submit);
+  const submit = document.createElement('button'); submit.type = 'submit'; submit.textContent = isNew ? 'Add and scan' : 'Save root and rescan';
+  const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'action-button'; pick.textContent = 'Choose project folder…';
+  const pickStatus = document.createElement('p'); pickStatus.setAttribute('role', 'status'); pickStatus.textContent = `Opens a folder dialog on this machine and fills the path above. Nothing is saved until you click ${submit.textContent}.`;
+  pick.addEventListener('click', async () => {
+    pick.disabled = true; pickStatus.textContent = 'Waiting for the folder dialog on this machine…';
+    try {
+      const response = await fetch('/api/pick-folder', { method: 'POST', headers: { 'content-type': 'application/json', 'x-supply-chain-token': localService.token }, body: '{}' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'The folder dialog failed');
+      if (result.cancelled) { pickStatus.textContent = 'No folder chosen. The form is unchanged.'; return; }
+      inputs.root.value = result.path;
+      if (!inputs.id.value.trim()) inputs.id.value = result.suggestedId || '';
+      if (!inputs.label.value.trim()) inputs.label.value = result.suggestedLabel || '';
+      pickStatus.textContent = `Folder chosen: ${result.path}. Review the ID and name, then click ${submit.textContent} to save it and scan.`;
+    } catch (error) { pickStatus.textContent = error.message; }
+    finally { pick.disabled = false; }
+  });
+  form.append(pick, pickStatus, submit);
   const status = document.createElement('p'); status.setAttribute('role', 'status'); form.append(status);
   form.addEventListener('submit', async event => {
     event.preventDefault(); submit.disabled = true; status.textContent = 'Scanning local files…';
@@ -681,6 +699,7 @@ $('edge-next').addEventListener('click', () => { edgePage++; renderEdgeIndex(); 
 $('search').addEventListener('input', () => { edgePage = 0; selectedId = null; selectedEdge = null; renderAll(); });
 for (const name of ['js', 'source', 'npm', 'github']) $(`${name}-tab`).addEventListener('click', () => { mode = name; edgePage = 0; selectedId = null; selectedEdge = null; renderAll(); });
 for (const name of ['all', 'critical', 'advisory', 'deprecated', 'outdated', 'unknown', 'coverage']) $(`signal-${name}`).addEventListener('click', () => { signalFilter = name; edgePage = 0; if (name !== 'all') { projectSelect.value = 'all'; graphDetail = 'paths'; } else if (projectSelect.value === 'all') graphDetail = 'direct'; if (name !== 'all' && name !== 'coverage') mode = 'npm'; if (name === 'coverage') mode = 'js'; selectedId = null; selectedEdge = null; $('search').value = ''; renderAll(); });
+$('add-project').addEventListener('click', () => { rootEditor(); $('inspector').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); });
 $('zoom-out').addEventListener('click', () => changeZoom(1 / 1.25));
 $('zoom-in').addEventListener('click', () => changeZoom(1.25));
 $('zoom-fit').addEventListener('click', () => { fitZoom = true; applyZoom(); });
