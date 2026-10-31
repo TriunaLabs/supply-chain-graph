@@ -3,6 +3,8 @@ const byId = new Map(snapshot.nodes.map(node => [node.id, node]));
 const projects = snapshot.nodes.filter(node => node.kind === 'project');
 const occurrences = snapshot.nodes.filter(node => node.kind === 'occurrence');
 const npmArtifacts = snapshot.nodes.filter(node => node.kind === 'artifact' && node.ecosystem === 'npm');
+const otherArtifacts = snapshot.nodes.filter(node => node.kind === 'artifact' && node.ecosystem && node.ecosystem !== 'npm');
+const displayLabel = node => node?.kind === 'artifact' && node.ecosystem && node.ecosystem !== 'npm' ? `${node.label} · ${node.ecosystem}` : node?.label || '';
 const artifactOf = new Map(snapshot.edges.filter(edge => edge.kind === 'resolves-to').map(edge => [edge.from, edge.to]));
 const packageChecks = snapshot.enrichment?.packages || {};
 const advisoryDetails = snapshot.enrichment?.advisories || {};
@@ -88,7 +90,7 @@ function signalFlags(node) {
     advisory: checks.osv?.status === 'checked' && (checks.osv.advisories?.length || 0) > 0,
     deprecated: checks.registry?.status === 'checked' ? !!checks.registry.deprecated : !!localDeprecationFor(node),
     outdated: checks.registry?.status === 'checked' && checks.registry.newerLatestTag === true,
-    unknown: (node?.kind === 'occurrence' || node?.kind === 'artifact' && node.ecosystem === 'npm') && checks.osv?.status !== 'checked',
+    unknown: (node?.kind === 'occurrence' || node?.kind === 'artifact') && checks.osv?.status !== 'checked',
     coverage: node?.kind === 'project' && projectsWithFindings.has(node.projectId)
   };
 }
@@ -110,13 +112,14 @@ function renderSignalBar() {
     if (localDeprecationFor(artifact)) localDeprecated++;
     if (checks.osv?.status === 'error' || checks.registry?.status === 'error') failed++;
   }
+  counts.unknown += otherArtifacts.length;
   counts.coverage = snapshot.findings.length;
   for (const key of ['critical', 'advisory', 'deprecated', 'outdated', 'unknown', 'coverage']) {
     const checked = key === 'critical' ? Object.keys(advisoryDetails).length : key === 'advisory' ? osvChecked : key === 'deprecated' ? registryChecked + localDeprecated : key === 'outdated' ? registryChecked : 1;
     $(`signal-${key}-count`).textContent = checked ? String(counts[key]) : '—';
   }
   for (const key of ['all', 'critical', 'advisory', 'deprecated', 'outdated', 'unknown', 'coverage']) $(`signal-${key}`).setAttribute('aria-pressed', String(signalFilter === key));
-  $('signal-note').textContent = `Portfolio totals · OSV checked ${osvChecked}/${artifacts.length} package versions · npm registry checked ${registryChecked}/${artifacts.length}${localDeprecated ? ` · ${localDeprecated} lockfile deprecation messages (cached)` : ''}${failed ? ` · ${failed} lookups failed` : ''}. Unknown results are not clean results.`;
+  $('signal-note').textContent = `Portfolio totals · OSV checked ${osvChecked}/${artifacts.length} package versions · npm registry checked ${registryChecked}/${artifacts.length}${localDeprecated ? ` · ${localDeprecated} lockfile deprecation messages (cached)` : ''}${failed ? ` · ${failed} lookups failed` : ''}${otherArtifacts.length ? ` · ${otherArtifacts.length} ${[...new Set(otherArtifacts.map(node => node.ecosystem))].join('/')} package versions have no advisory lookup in this starter` : ''}. Unknown results are not clean results.`;
 }
 
 function readableStatus(value) {
@@ -248,15 +251,20 @@ function inspectNode(node) {
   const type = document.createElement('div'); type.className = 'entity-type'; type.textContent = node.kind;
   const name = document.createElement('div'); name.className = 'entity-name'; name.textContent = node.label;
   panel.append(type, name);
-  for (const item of [detail('Project', node.projectId && byId.get(`project:${node.projectId}`)?.label), detail('Local source status', node.sourceStatus), detail('Ecosystem', node.ecosystem), detail('Version', node.version), detail('URL version hint', node.versionHint), detail('Requested', node.requested), detail('Source file', node.kind === 'source-file' ? node.location : null), detail('Install path', node.kind !== 'source-file' ? node.location : null), detail('Source type', node.sourceKind), detail('Import map URL', node.mappedUrl), detail('Reference', node.reference), detail('Pinned commit', node.pinned == null ? null : node.pinned ? 'Yes' : 'No'), detail('Local commit', node.commit), detail('Branch', node.branch), detail('Origin', node.origin), detail('Cached upstream ref', node.upstream), detail('Upstream check', node.upstreamIsCached ? 'Cached local ref; live GitHub not queried' : null), detail('Ahead of cached upstream', node.ahead), detail('Behind cached upstream', node.behind)]) if (item) panel.append(item);
+  for (const item of [detail('Project', node.projectId && byId.get(`project:${node.projectId}`)?.label), detail('Local source status', node.sourceStatus), detail('Ecosystem', node.ecosystem), detail('Version', node.version), detail('URL version hint', node.versionHint), detail('Requested', node.requested), detail('Source file', node.kind === 'source-file' ? node.location : null), detail('Install path', node.kind !== 'source-file' ? node.location : null), detail('Source type', node.sourceKind), detail('Import map URL', node.mappedUrl), detail('Reference', node.reference), detail('Pinned commit', node.pinned == null ? null : node.pinned ? 'Yes' : 'No'), detail('Local commit', node.commit), detail('Branch', node.branch), detail('Origin', node.origin), detail('Repository root', node.repoRoot), detail('Project folder', node.rootIsRepoSubdirectory ? 'Subdirectory of this checkout; the Git metadata belongs to the enclosing repository' : node.repoRoot ? 'Repository root' : null), detail('Cached upstream ref', node.upstream), detail('Upstream check', node.upstreamIsCached ? 'Cached local ref; live GitHub not queried' : null), detail('Ahead of cached upstream', node.ahead), detail('Behind cached upstream', node.behind)]) if (item) panel.append(item);
   appendFolderAction(panel, node);
+  if ((node.kind === 'artifact' || node.kind === 'declaration') && node.ecosystem && node.ecosystem !== 'npm' && node.ecosystem !== 'JavaScript') {
+    panel.append(detail('OSV advisory lookup', `Not checked · this starter queries npm packages only; ${node.ecosystem} lookups are not implemented`));
+    const heading = document.createElement('h3'); heading.className = 'next-step-heading'; heading.textContent = 'Suggested next step'; panel.append(heading);
+    panel.append(actionText('Complete the check', `Advisory coverage is unknown for this ${node.ecosystem} package. Check it against a ${node.ecosystem} advisory source before treating it as clean.`));
+  }
   if (node.kind === 'source-import') panel.append(actionText('Source-only evidence', 'This import was observed in code. A mapped CDN URL is a source hint, not a verified installed package. npm and OSV checks require a confirmed package and version.'));
   if (node.kind === 'project') {
     const count = snapshot.findings.filter(finding => finding.projectId === node.projectId).length;
     panel.append(detail('Coverage findings', count));
     const checkout = checkoutByProject.get(node.projectId);
     const critical = [...(projectCriticalPackages.get(node.projectId) || [])];
-    for (const item of [detail('Checkout branch', checkout?.branch), detail('Git origin', checkout?.origin), detail('Critical package versions in cached checks', critical.length), detail('Critical packages', critical.join(', '))]) if (item) panel.append(item);
+    for (const item of [detail('Checkout branch', checkout?.branch), detail('Git origin', checkout?.origin), detail('Git metadata source', checkout?.rootIsRepoSubdirectory ? `Enclosing repository at ${checkout.repoRoot}; this project folder is a subdirectory of it` : null), detail('Critical package versions in cached checks', critical.length), detail('Critical packages', critical.join(', '))]) if (item) panel.append(item);
     const siblings = (projectsByOrigin.get(checkout?.origin) || []).filter(project => project.id !== node.id);
     for (const sibling of siblings) panel.append(detail('Other checkout of this remote', `${sibling.label} · ${checkoutByProject.get(sibling.projectId)?.branch || 'detached'} · ${sibling.rootPath || 'root unknown'}`));
     const button = document.createElement('button'); button.type = 'button'; button.className = 'action-button'; button.textContent = 'Set or change root';
@@ -415,6 +423,13 @@ function renderEdgeIndex() {
   $('edge-prev').disabled = edgePage === 0;
   $('edge-next').disabled = edgePage >= pages - 1;
 }
+function sourceCoverageNote() {
+  if (mode !== 'source') return null;
+  const scoped = projectSelect.value === 'all' ? snapshot.coverage : snapshot.coverage.filter(record => `project:${record.projectId}` === projectSelect.value);
+  if (!scoped.length || !scoped.every(record => record.sourceFiles === 0)) return null;
+  const statuses = [...new Set(scoped.map(record => readableStatus(record.source)))].join(', ');
+  return `No JavaScript or TypeScript source files were found under ${projectSelect.value === 'all' ? 'any configured root' : 'this root'} (source coverage: ${statuses} · 0 files). The Source imports lens has nothing to draw. This is a coverage result, not a check that found no imports.`;
+}
 function directView(edges, query) {
   const all = projectSelect.value === 'all';
   const allRoots = all ? projects.map(project => project.id) : [projectSelect.value];
@@ -441,7 +456,7 @@ function directView(edges, query) {
   const projectOf = new Map(rootNodes.map(id => [id, id]));
   for (const edge of visibleFirst) { depth.set(edge.to, 1); if (!projectOf.has(edge.to)) projectOf.set(edge.to, edge.from); }
   for (const edge of visibleSecond) { depth.set(edge.to, 2); if (!projectOf.has(edge.to)) projectOf.set(edge.to, projectOf.get(edge.from)); }
-  const message = keep.size ? `Showing every ${mode === 'source' ? 'source file with literal imports' : mode === 'js' ? 'direct JavaScript request' : mode === 'npm' ? 'direct npm / pnpm dependency' : 'GitHub source'} for the visible project scope. Select a node or edge to inspect its evidence.` : 'No direct matches in this lens. Try another project or view.';
+  const message = sourceCoverageNote() || (keep.size ? `Showing every ${mode === 'source' ? 'source file with literal imports' : mode === 'js' ? 'direct JavaScript request' : mode === 'npm' ? 'direct npm / pnpm dependency' : 'GitHub source'} for the visible project scope. Select a node or edge to inspect its evidence.` : 'No direct matches in this lens. Try another project or view.');
   return { nodes: [...keep].map(id => byId.get(id)).filter(Boolean), edges: [...visibleFirst, ...visibleSecond], depth, projectOf, direct: true, directCount: visibleFirst.length, paged, allProjectsShown, pages, rootCount: allRoots.length, totalEdges: first.length + second.length, message };
 }
 function networkView(query) {
@@ -507,7 +522,7 @@ function networkView(query) {
     }
   }
   const visible = edges.filter(edge => keep.has(edge.from) && keep.has(edge.to));
-  const message = signalFilter !== 'all' ? `Showing up to 12 ${signalFilter} paths from this snapshot. Select a node for its lookup evidence.` : query ? 'Showing up to 8 matching paths and nearby relationships across the full snapshot.' : all ? 'Showing every project root across pages, with a bounded dependency sample per page. Focus a project or search to trace more paths.' : 'Showing a bounded project path. Search to trace a dependency through the full snapshot.';
+  const message = sourceCoverageNote() || (signalFilter !== 'all' ? `Showing up to 12 ${signalFilter} paths from this snapshot. Select a node for its lookup evidence.` : query ? 'Showing up to 8 matching paths and nearby relationships across the full snapshot.' : all ? 'Showing every project root across pages, with a bounded dependency sample per page. Focus a project or search to trace more paths.' : 'Showing a bounded project path. Search to trace a dependency through the full snapshot.');
   return { nodes: [...keep].map(id => byId.get(id)).filter(Boolean), edges: visible, depth, paged, pages, rootCount: allRoots.length, totalEdges: edges.length, message };
 }
 
@@ -571,15 +586,17 @@ function drawGraph(view) {
   for (const node of view.nodes) {
     const flags = signalFlags(node), status = signalFilter !== 'all' && flags[signalFilter] ? signalFilter : ['critical', 'advisory', 'deprecated', 'outdated', 'coverage', 'unknown'].find(key => flags[key]);
     const statuses = Object.entries(flags).filter(([, value]) => value).map(([key]) => key).join(', ');
-    const pos = positions.get(node.id), group = svgElement('g', { class: `node ${node.kind}${status ? ` signal-${status}` : ''}${focused === node.id ? ' selected' : focused && !view.edges.some(edge => edge.from === focused && edge.to === node.id || edge.to === focused && edge.from === node.id) ? ' dim' : ''}`, transform: `translate(${pos.x} ${pos.y})`, tabindex: '0', role: 'button', 'aria-label': `${node.kind}: ${node.label}${statuses ? `; ${statuses}` : ''}` });
+    const pos = positions.get(node.id), group = svgElement('g', { class: `node ${node.kind}${status ? ` signal-${status}` : ''}${focused === node.id ? ' selected' : focused && !view.edges.some(edge => edge.from === focused && edge.to === node.id || edge.to === focused && edge.from === node.id) ? ' dim' : ''}`, transform: `translate(${pos.x} ${pos.y})`, tabindex: '0', role: 'button', 'aria-label': `${node.kind}: ${displayLabel(node)}${statuses ? `; ${statuses}` : ''}` });
     group.append(svgElement('rect', { width, height, rx: '5' }));
-    const label = svgElement('text', { x: '9', y: '19' }); label.textContent = node.label.length > (status ? 26 : 30) ? node.label.slice(0, status ? 24 : 28) + '…' : node.label; group.append(label);
+    const shown = displayLabel(node);
+    const label = svgElement('text', { x: '9', y: '19' }); label.textContent = shown.length > (status ? 26 : 30) ? shown.slice(0, status ? 24 : 28) + '…' : shown; group.append(label);
     if (status) group.append(svgElement('circle', { class: 'status-marker', cx: width - 10, cy: height / 2, r: 4 }));
-    const title = svgElement('title'); title.textContent = `${node.kind} · ${node.label}${statuses ? ` · ${statuses}` : ''}`; group.append(title);
+    const title = svgElement('title'); title.textContent = `${node.kind} · ${shown}${statuses ? ` · ${statuses}` : ''}`; group.append(title);
     const selectNode = () => { if (selectedId === node.id) return clearGraphSelection(); selectedId = node.id; selectedEdge = null; drawGraph(view); inspectNode(node); };
     group.addEventListener('click', selectNode); group.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectNode(); } }); svg.append(group);
   }
-  $('graph-note').textContent = view.direct ? `${view.nodes.filter(node => node.kind === 'project').length} projects · ${view.directCount} direct links · ${view.edges.length} of ${view.totalEdges} direct-view edges shown` : `${view.nodes.length} visible nodes · ${view.edges.length} of ${view.totalEdges} lens edges shown · bounded path view`;
+  const coverageSuffix = mode === 'source' && !view.edges.length && sourceCoverageNote() ? ' · no source files found (coverage, not a clean check)' : '';
+  $('graph-note').textContent = (view.direct ? `${view.nodes.filter(node => node.kind === 'project').length} projects · ${view.directCount} direct links · ${view.edges.length} of ${view.totalEdges} direct-view edges shown` : `${view.nodes.length} visible nodes · ${view.edges.length} of ${view.totalEdges} lens edges shown · bounded path view`) + coverageSuffix;
 }
 function clearGraphSelection() {
   selectedId = null; selectedEdge = null;
@@ -626,7 +643,7 @@ function renderScopeContext() {
   const checkout = checkoutByProject.get(project.projectId);
   const siblings = (projectsByOrigin.get(checkout?.origin) || []).filter(other => other.id !== project.id);
   const critical = projectCriticalPackages.get(project.projectId)?.size || 0;
-  context.textContent = `Checkout: ${checkout?.branch || 'unknown branch'} · ${project.rootPath || 'root not configured'} · ${critical} critical package version${critical === 1 ? '' : 's'} in cached checks${siblings.length ? ` · Same remote also scanned as ${siblings.map(other => `${other.label} (${checkoutByProject.get(other.projectId)?.branch || 'detached'})`).join(', ')}` : ''}`;
+  context.textContent = `Checkout: ${checkout?.branch || 'unknown branch'}${checkout?.rootIsRepoSubdirectory ? ' (enclosing repository; project folder is a subdirectory)' : ''} · ${project.rootPath || 'root not configured'} · ${critical} critical package version${critical === 1 ? '' : 's'} in cached checks${siblings.length ? ` · Same remote also scanned as ${siblings.map(other => `${other.label} (${checkoutByProject.get(other.projectId)?.branch || 'detached'})`).join(', ')}` : ''}`;
 }
 function renderGraph() {
   const query = $('search').value.trim().toLowerCase();

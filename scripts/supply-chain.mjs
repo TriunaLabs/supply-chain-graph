@@ -359,8 +359,11 @@ async function scan(configFile, includeGit = true) {
       const upstream = git(root, 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}');
       const counts = upstream ? git(root, 'rev-list', '--left-right', '--count', `HEAD...${upstream}`) : null;
       const parts = counts?.split(/\s+/).map(Number);
+      const topLevel = git(root, 'rev-parse', '--show-toplevel');
+      const repoRoot = topLevel ? resolve(topLevel) : null;
+      const rootIsRepoSubdirectory = repoRoot ? relative(repoRoot, root) !== '' : false;
       const rid = `checkout:${project.id}`;
-      addNode({ id: rid, kind: 'checkout', label: branch || head.slice(0, 12), projectId: project.id, commit: head, branch: branch || null, origin: repo || (origin ? 'other-remote' : null), upstream: upstream || null, ahead: parts?.[0] ?? null, behind: parts?.[1] ?? null, upstreamIsCached: true });
+      addNode({ id: rid, kind: 'checkout', label: branch || head.slice(0, 12), projectId: project.id, commit: head, branch: branch || null, origin: repo || (origin ? 'other-remote' : null), upstream: upstream || null, ahead: parts?.[0] ?? null, behind: parts?.[1] ?? null, upstreamIsCached: true, repoRoot, rootIsRepoSubdirectory });
       addEdge({ from: id, to: rid, kind: 'checked-out-at', source: 'local-git' });
       if (repo) {
         const remoteId = `github:${repo.toLowerCase()}`;

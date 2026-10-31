@@ -219,6 +219,58 @@ test('relationship index pages through edges beyond the drawn graph sample', asy
   assert.ok(elements.get('inspector').children.some(item => item.className === 'entity-type' && item.textContent === 'Relationship'));
 });
 
+test('non-npm packages, empty source coverage, and nested checkouts are labeled instead of looking clean', async () => {
+  const snapshot = {
+    generatedAt: '2026-10-31T00:00:00Z', findings: [], enrichment: { packages: {} },
+    coverage: [{ projectId: 'app', npm: 'resolved-v3', source: 'not-found', git: 'cached-upstream', actions: 'not-found', python: '1 requirements', sourceFiles: 0, sourceImports: 0 }],
+    nodes: [
+      { id: 'project:app', kind: 'project', label: 'App', projectId: 'app', rootPath: '/repo/examples/app' },
+      { id: 'checkout:app', kind: 'checkout', label: 'main', projectId: 'app', branch: 'main', origin: 'example/repo', commit: 'abc', repoRoot: '/repo', rootIsRepoSubdirectory: true },
+      { id: 'github:example/repo', kind: 'repository', label: 'example/repo' },
+      { id: 'occ:app:node_modules/alpha', kind: 'occurrence', label: 'alpha@1.0.0', name: 'alpha', version: '1.0.0', projectId: 'app' },
+      { id: 'npm:alpha@1.0.0', kind: 'artifact', ecosystem: 'npm', label: 'alpha@1.0.0', name: 'alpha', version: '1.0.0' },
+      { id: 'pypi:requests@2.32.0', kind: 'artifact', ecosystem: 'PyPI', label: 'requests@2.32.0', name: 'requests', version: '2.32.0', projectId: 'app' }
+    ],
+    edges: [
+      { from: 'project:app', to: 'occ:app:node_modules/alpha', kind: 'depends-on', source: 'package.json + package-lock.json' },
+      { from: 'occ:app:node_modules/alpha', to: 'npm:alpha@1.0.0', kind: 'resolves-to', source: 'package-lock.json' },
+      { from: 'project:app', to: 'pypi:requests@2.32.0', kind: 'depends-on', source: 'requirements.txt' },
+      { from: 'project:app', to: 'checkout:app', kind: 'checked-out-at', source: 'local-git' },
+      { from: 'checkout:app', to: 'github:example/repo', kind: 'tracks', source: 'local-git' }
+    ]
+  };
+  const elements = await executeDashboard(snapshot);
+  const graph = elements.get('graph');
+  assert.equal(elements.get('signal-unknown-count').textContent, '2');
+  assert.match(elements.get('signal-note').textContent, /1 PyPI package versions have no advisory lookup/);
+  const python = graph.children.find(item => item.tag === 'g' && item.attributes['aria-label']?.startsWith('artifact: requests@2.32.0 · PyPI'));
+  assert.ok(python, 'PyPI artifact is labeled with its ecosystem');
+  assert.match(python.attributes['aria-label'], /unknown/);
+  assert.ok(python.attributes.class.includes('signal-unknown'));
+  python.listeners.click();
+  assert.ok(elements.get('inspector').children.some(item => item.className === 'detail-row' && item.children.some(child => child.textContent === 'OSV advisory lookup · ')));
+  assert.ok(elements.get('inspector').children.some(item => item.className === 'action-text'));
+  elements.get('signal-unknown').listeners.click();
+  assert.ok(graph.children.some(item => item.tag === 'g' && item.attributes['aria-label']?.startsWith('artifact: requests@2.32.0 · PyPI')));
+  elements.get('signal-all').listeners.click();
+  elements.get('project').value = 'project:app'; elements.get('project').listeners.change();
+  assert.match(elements.get('scope-context').textContent, /enclosing repository; project folder is a subdirectory/);
+  elements.get('source-tab').listeners.click();
+  assert.equal(graph.children.filter(item => item.tag === 'path').length, 0);
+  assert.ok(elements.get('inspector').children.some(item => item.tag === 'p' && /No JavaScript or TypeScript source files were found under this root \(source coverage: Not found · 0 files\)/.test(item.textContent)));
+  assert.match(elements.get('graph-note').textContent, /no source files found \(coverage, not a clean check\)/);
+  elements.get('graph-detail').value = 'direct'; elements.get('graph-detail').listeners.change();
+  assert.ok(elements.get('inspector').children.some(item => item.tag === 'p' && item.textContent.startsWith('No JavaScript or TypeScript source files')));
+  elements.get('github-tab').listeners.click();
+  const checkout = graph.children.find(item => item.tag === 'g' && item.attributes['aria-label']?.startsWith('checkout: main'));
+  checkout.listeners.click();
+  assert.ok(elements.get('inspector').children.some(item => item.className === 'detail-row' && item.children.some(child => child.textContent === 'Repository root · ')));
+  assert.ok(elements.get('inspector').children.some(item => item.className === 'detail-row' && item.children.some(child => child.textContent === 'Project folder · ') && item.children.some(child => /enclosing repository/.test(child.textContent))));
+  const project = graph.children.find(item => item.tag === 'g' && item.attributes['aria-label']?.startsWith('project: App'));
+  project.listeners.click();
+  assert.ok(elements.get('inspector').children.some(item => item.className === 'detail-row' && item.children.some(child => child.textContent === 'Git metadata source · ')));
+});
+
 if (process.env.SUPPLY_CHAIN_SNAPSHOT) test('large portfolio opens with a bounded, connected network', async () => {
   const data = JSON.parse(await readFile(process.env.SUPPLY_CHAIN_SNAPSHOT, 'utf8'));
   const elements = await executeDashboard(data);

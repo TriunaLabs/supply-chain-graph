@@ -102,10 +102,10 @@ When multiple local roots track the same GitHub repository, the project selector
 | Root `package.json` without a supported lock | Declared dependencies and requested ranges; resolved versions remain unknown |
 | JavaScript and TypeScript source imports | Bounded scan of literal `import`, `export from`, dynamic `import()`, and `require()` specifiers; local file links and external bare imports remain separate from npm resolution |
 | Root HTML import maps | Mapped URLs and version hints for bare browser imports, with no claim that the package is installed or that the URL was fetched |
-| Git checkout | Local HEAD, branch, origin label, and cached upstream divergence when present |
+| Git checkout | Local HEAD, branch, origin label, and cached upstream divergence when present; when the project folder is a subdirectory of a repository, the checkout records the enclosing repository root and is labeled as such (the demo fixture is one, inside this repository's own checkout) |
 | GitHub git URLs in npm resolution | Links a package occurrence to a GitHub repository label |
 | GitHub Actions and Git submodules | Workflow `uses` and submodule repository links from local files |
-| Python `requirements.txt` at project root | Direct pinned versions or declared ranges; transitive resolution is not inferred |
+| Python `requirements.txt` at project root | Direct pinned versions or declared ranges; transitive resolution is not inferred. Pinned PyPI packages appear in the **npm / pnpm** lens labeled with their ecosystem and marked **Advisory unknown**, because the opt-in enrichment queries npm names only |
 | Missing, ambiguous, or unsupported lockfile | Specific coverage finding with source and suggested next step |
 | OSV advisories and npm registry lifecycle metadata | Opt-in `enrich` command; recorded per package version with checked, failed, and unavailable states |
 | Remote GitHub heads, releases, other ecosystems | Adapter contract in `references/architecture.md`; not collected yet |

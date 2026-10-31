@@ -113,6 +113,30 @@ test('unconfigured source path explains the coverage gap without implying a read
   assert.match(snapshot.findings[0].title, /No project source path is configured/);
 });
 
+test('a project folder inside a larger repository records the enclosing repository root', async () => {
+  const repo = resolve(scratch, 'enclosing-repo');
+  const nested = resolve(repo, 'apps', 'nested-app');
+  await mkdir(nested, { recursive: true });
+  await writeFile(resolve(nested, 'package.json'), JSON.stringify({ name: 'nested-app', version: '1.0.0' }));
+  const gitEnv = { ...process.env, GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.invalid', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.invalid' };
+  const gitRun = (...argv) => execFileSync('git', argv, { cwd: repo, encoding: 'utf8', env: gitEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+  gitRun('init', '-q', '-b', 'main');
+  gitRun('-c', 'commit.gpgsign=false', 'commit', '-q', '--allow-empty', '-m', 'initial');
+  const config = resolve(scratch, 'nested-config.json');
+  const out = resolve(scratch, 'nested-snapshot.json');
+  await writeFile(config, JSON.stringify({ projects: [{ id: 'nested', root: nested }, { id: 'top', root: repo }] }));
+  run('scan', '--config', config, '--out', out);
+  const snapshot = JSON.parse(await readFile(out, 'utf8'));
+  const nestedCheckout = snapshot.nodes.find(node => node.id === 'checkout:nested');
+  const topCheckout = snapshot.nodes.find(node => node.id === 'checkout:top');
+  assert.ok(nestedCheckout && topCheckout, 'both checkouts recorded');
+  assert.equal(nestedCheckout.rootIsRepoSubdirectory, true);
+  assert.equal(resolve(nestedCheckout.repoRoot).toLowerCase(), repo.toLowerCase());
+  assert.equal(topCheckout.rootIsRepoSubdirectory, false);
+  assert.equal(resolve(topCheckout.repoRoot).toLowerCase(), repo.toLowerCase());
+  assert.equal(nestedCheckout.commit, topCheckout.commit);
+});
+
 test('diff reports checked advisory signals and does not resolve them after a failed lookup', async () => {
   const previous = { schemaVersion: 1, generatedAt: '2026-10-29T00:00:00Z', findings: [], nodes: [{ id: 'project:check', kind: 'project', projectId: 'check' }, { id: 'occ:check:alpha', kind: 'occurrence', projectId: 'check', name: 'alpha', version: '1.0.0', location: 'node_modules/alpha' }, { id: 'npm:alpha@1.0.0', kind: 'artifact', ecosystem: 'npm', name: 'alpha', version: '1.0.0' }], edges: [{ from: 'occ:check:alpha', to: 'npm:alpha@1.0.0', kind: 'resolves-to' }] };
   const current = { ...previous, generatedAt: '2026-10-30T00:00:00Z', enrichment: { packages: { 'npm:alpha@1.0.0': { osv: { status: 'checked', checkedAt: '2026-10-30T00:00:00Z', advisories: [{ id: 'OSV-EXAMPLE' }] }, registry: { status: 'checked', checkedAt: '2026-10-30T00:00:00Z', deprecated: 'Use another package', latestTag: '2.0.0', newerLatestTag: true } } } } };
