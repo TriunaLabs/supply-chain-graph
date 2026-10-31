@@ -19,6 +19,16 @@ The demo page is generated from `examples/demo-snapshot.json`, a synthetic snaps
 node scripts/supply-chain.mjs render --snapshot examples/demo-snapshot.json --out examples/demo-dashboard.html
 ```
 
+## How the pieces fit
+
+Two figures, drawn from the repository as of commit b9a2b37. Solid boxes exist in this repository; dashed boxes are yours to build. Click a figure for the full-size file; the text is small at this width.
+
+[![Five stages run from chosen project folders through an offline scan, optional advisory lookups and a graph dashboard to a policy result and candidate events.](docs/walkthrough/local-workflow.svg)](docs/walkthrough/local-workflow.svg)
+
+[![Today's command line tools feed a user-owned CI flow where policy and a person's review come before any write job; dashed parts are yours to build.](docs/walkthrough/github-actions-flow.svg)](docs/walkthrough/github-actions-flow.svg)
+
+The figures are static snapshots. When a dashed part ships, the figure needs redrawing; the commands and examples they name are checked by the test suite, the drawings are not.
+
 ## Scan one real project on Windows
 
 From your cloned repository, choose a project directory and keep the config and scan output outside the clone. Replace the sample path below with the absolute path to your own project. The project ID is a lowercase label for this dashboard.
