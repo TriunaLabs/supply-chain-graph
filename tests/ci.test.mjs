@@ -8,7 +8,7 @@ import { summarize } from '../scripts/summary.mjs';
 
 const base = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cli = resolve(base, 'scripts/supply-chain.mjs');
-const read = file => readFile(resolve(base, file), 'utf8');
+const read = async file => (await readFile(resolve(base, file), 'utf8')).replace(/\r\n/g, '\n');
 
 test('workflows run read-only, pin every action to a full commit SHA, and never use pull_request_target', async () => {
   for (const file of ['examples/ci/scan.yml', '.github/workflows/ci.yml']) {
