@@ -38,6 +38,8 @@ Invoke-Item "$private\dashboard.html"
 
 `init` creates a new empty config and stops if that file already exists. For another project, use your latest config as `set-root --config` and choose a new `--out` path. The static HTML is read-only. To enable **Set root** and **Open folder in Explorer**, run `node scripts/supply-chain.mjs serve --config "$private\portfolio.with-project.json" --snapshot "$private\snapshot.json" --out "$private\dashboard.html"` and open the localhost URL printed in the terminal. A project without a lockfile still shows declared dependencies and literal JavaScript imports, but installed versions and security status remain unknown until supported resolution and opt-in lookups are available.
 
+In local editing mode, click **Add project folder**, then **Choose project folder**, select a directory, and click **Add and scan** to save it. On Windows, the folder dialog may open behind the browser; bring it forward from the taskbar if it seems missing.
+
 ## Choose project folders or discover them
 
 Start a private portfolio config outside this repository:
