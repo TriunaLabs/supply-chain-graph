@@ -34,6 +34,10 @@ The documents above now have versioned JSON Schemas under `contracts/` (snapshot
 
 `contracts/proposal.v1.schema.json` and `contracts/decision.v1.schema.json` are the remediation contract; `hitl-remediation.md` is the guide. `check-proposal --proposal FILE --packet FILE` rejects a proposal that cites an evidence ID, file, artifact, advisory ID, dependency path, or commit the packet does not contain, proposes a change for an event the policy did not mark actionable, or was written against another packet hash. `check-decision --decision FILE --proposal FILE --packet FILE` exits 0 only for an unexpired approval bound to the exact proposal hash, packet hash, and source commit, and warns when the recorded method is a manual note rather than a pull request review or protected environment. No model is called by default; no job in this repository writes code, issues, or pull requests.
 
+## Observability
+
+`examples/otel/` wraps each stage in a span (scan, enrich, evaluate, packet, proposal check, decision check) with run and trace IDs, durations, counts, coverage states, outcomes, and coarse error codes. Keys are allowlisted, so no span can carry a path, repository or project name, package name, version, advisory prose, source text, token, packet body, or proposal body. Export requires an explicit `SCG_OTEL_ENDPOINT`; the default is no outbound telemetry. Telemetry diagnoses the pipeline; the policy result, proposal, decision, and receipt files remain the audit record.
+
 ## What still needs implementation
 
 Ownership mapping from dependency paths to teams, a `workflow_call` wrapper once the example workflow interface is stable, and adapters for further ecosystems. Ecosystem collectors should be separate adapters with explicit supported formats, provenance, coverage states, and fixtures; notifier and remediation adapters should be separate from collection. SBOM import/export and SARIF output are reasonable future connectors after the graph identity and finding mapping are stable. A safe first integration is read-only: generate a private summary and proposed actions, then review them.

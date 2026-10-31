@@ -65,7 +65,8 @@ export function evaluate(snapshot, policy, { now = null, previous = null } = {})
   // Freshness of the scan itself.
   const generated = parseTime(snapshot.generatedAt);
   const ageHours = generated ? Math.round(hours(evaluatedAt, generated) * 100) / 100 : null;
-  const freshness = { state: ageHours == null ? 'unknown' : maxAgeHours != null && ageHours > maxAgeHours ? 'stale' : 'fresh', maxAgeHours, ageHours };
+  // A snapshot dated after the evaluation time means inconsistent clocks or a wrong --at; that is unknown, not fresh.
+  const freshness = { state: ageHours == null || ageHours < 0 ? 'unknown' : maxAgeHours != null && ageHours > maxAgeHours ? 'stale' : 'fresh', maxAgeHours, ageHours };
 
   // Occurrence -> artifact, artifact -> occurrences, and one dependency path per occurrence (labels only, never paths on disk).
   const artifactOf = new Map(snapshot.edges.filter(edge => edge.kind === 'resolves-to').map(edge => [edge.from, edge.to]));
