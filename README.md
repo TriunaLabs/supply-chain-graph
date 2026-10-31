@@ -1,6 +1,6 @@
 # Supply Chain Graph skill
 
-A public-repo-ready Codex skill and local starter for a portfolio dependency graph. The included CLI reads only configured project roots and parent directories explicitly selected for discovery. It does not search the whole computer for repositories. Local scanning does not install packages, fetch Git remotes, or send notifications. Network lookups are separate commands.
+A Codex skill and local starter by Triuna Labs, Inc. for a portfolio dependency graph. The included CLI reads only configured project roots and parent directories explicitly selected for discovery. It does not search the whole computer for repositories. Local scanning does not install packages, fetch Git remotes, or send notifications. Network lookups are separate commands.
 
 ## Try it
 
@@ -12,6 +12,25 @@ node scripts/supply-chain.mjs render --snapshot local/snapshot.json --out local/
 ```
 
 The example config points at a tiny fixture. These `local/` commands are for the synthetic demo only; write every real config and scan output to a private location outside this repo. A project without a known root can use `"root": null`; it will appear as an unavailable coverage source. The `local/` output directory is ignored by Git. Open `local/dashboard.html` in a browser, or inspect the [safe demo dashboard](examples/demo-dashboard.html).
+
+## Scan one real project on Windows
+
+From your cloned repository, choose a project directory and keep the config and scan output outside the clone. Replace the sample path below with the absolute path to your own project. The project ID is a lowercase label for this dashboard.
+
+```powershell
+$project = 'C:\path\to\your-project'
+if (-not (Test-Path -LiteralPath $project -PathType Container)) { throw 'Choose an existing project directory' }
+$private = Join-Path $env:USERPROFILE 'supply-chain-graph-private'
+New-Item -ItemType Directory -Force -Path $private | Out-Null
+
+node scripts/supply-chain.mjs init --out "$private\portfolio.json"
+node scripts/supply-chain.mjs set-root --config "$private\portfolio.json" --id my-project --label "My Project" --root $project --out "$private\portfolio.with-project.json"
+node scripts/supply-chain.mjs scan --config "$private\portfolio.with-project.json" --out "$private\snapshot.json"
+node scripts/supply-chain.mjs render --snapshot "$private\snapshot.json" --out "$private\dashboard.html"
+Invoke-Item "$private\dashboard.html"
+```
+
+`init` creates a new empty config and stops if that file already exists. For another project, use your latest config as `set-root --config` and choose a new `--out` path. The static HTML is read-only. To enable **Set root** and **Open folder in Explorer**, run `node scripts/supply-chain.mjs serve --config "$private\portfolio.with-project.json" --snapshot "$private\snapshot.json" --out "$private\dashboard.html"` and open the localhost URL printed in the terminal. A project without a lockfile still shows declared dependencies and literal JavaScript imports, but installed versions and security status remain unknown until supported resolution and opt-in lookups are available.
 
 ## Choose project folders or discover them
 
