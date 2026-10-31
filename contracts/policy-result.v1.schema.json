@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TriunaLabs/supply-chain-graph/contracts/policy-result.v1.schema.json",
+  "title": "Supply Chain Graph policy result v1",
+  "description": "Deterministic output of `evaluate`: scan identity, freshness, per-check coverage states, findings with stable identities, optional transitions against a previous result, and a gate verdict. Coverage states can be routed to review but never become safe or resolved; a finding is marked no longer observed only after a comparable successful check.",
+  "type": "object",
+  "required": ["schemaVersion", "evaluatedAt", "policy", "scan", "freshness", "coverage", "checks", "findings", "gate", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "evaluatedAt": { "type": "string", "format": "date-time" },
+    "policy": {
+      "type": "object",
+      "required": ["id", "version", "hash"],
+      "additionalProperties": false,
+      "properties": { "id": { "type": "string" }, "version": { "type": "string" }, "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+    },
+    "scan": {
+      "type": "object",
+      "required": ["schemaVersion", "generatedAt", "projects", "sourceCommits"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "generatedAt": { "type": "string" },
+        "projects": { "type": "array", "items": { "type": "string" } },
+        "sourceCommits": { "type": "object", "additionalProperties": { "type": ["string", "null"] } },
+        "enrichmentAttemptedAt": { "type": ["string", "null"] }
+      }
+    },
+    "freshness": {
+      "type": "object",
+      "required": ["state", "maxAgeHours", "ageHours"],
+      "additionalProperties": false,
+      "properties": {
+        "state": { "type": "string", "enum": ["fresh", "stale", "unknown"] },
+        "maxAgeHours": { "type": ["number", "null"] },
+        "ageHours": { "type": ["number", "null"] }
+      }
+    },
+    "coverage": { "type": "array", "items": { "type": "object", "required": ["projectId"], "additionalProperties": { "type": ["string", "integer", "null"] } } },
+    "checks": {
+      "type": "object",
+      "required": ["artifacts", "totals"],
+      "additionalProperties": false,
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["artifactId", "ecosystem", "name", "version", "osv", "registry", "projects"],
+            "additionalProperties": false,
+            "properties": {
+              "artifactId": { "type": "string" },
+              "ecosystem": { "type": "string" },
+              "name": { "type": "string" },
+              "version": { "type": ["string", "null"] },
+              "osv": { "$ref": "#/$defs/coverageState" },
+              "registry": { "$ref": "#/$defs/coverageState" },
+              "advisoryCount": { "type": ["integer", "null"] },
+              "checkedAt": { "type": ["string", "null"] },
+              "projects": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "totals": {
+          "type": "object",
+          "required": ["osv", "registry"],
+          "additionalProperties": false,
+          "properties": { "osv": { "$ref": "#/$defs/stateCounts" }, "registry": { "$ref": "#/$defs/stateCounts" } }
+        }
+      }
+    },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "transitions": {
+      "type": "array",
+      "description": "Present only when a previous policy result was supplied.",
+      "items": {
+        "type": "object",
+        "required": ["eventId", "findingId", "transition", "ruleId"],
+        "additionalProperties": false,
+        "properties": {
+          "eventId": { "type": "string", "pattern": "^e_[0-9a-f]{16}$" },
+          "findingId": { "type": "string", "pattern": "^f_[0-9a-f]{16}$" },
+          "transition": { "type": "string", "enum": ["observed", "still-observed", "no-longer-observed", "unknown"] },
+          "ruleId": { "type": "string" },
+          "observed": { "type": ["string", "null"], "description": "Version or commit observed in the current snapshot, so a later reappearance alerts again." },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "required": ["status", "failOn", "failing"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "type": "string", "enum": ["pass", "fail", "not-configured"] },
+        "failOn": { "type": "array", "items": { "type": "string" } },
+        "failing": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["findings", "actionable", "needsReview", "informational"],
+      "additionalProperties": false,
+      "properties": {
+        "findings": { "type": "integer" },
+        "actionable": { "type": "integer" },
+        "needsReview": { "type": "integer" },
+        "informational": { "type": "integer" },
+        "byRule": { "type": "object", "additionalProperties": { "type": "integer" } }
+      }
+    }
+  },
+  "$defs": {
+    "coverageState": { "type": "string", "enum": ["checked-and-none", "checked-with-results", "failed", "unqueried", "unsupported", "stale"] },
+    "stateCounts": {
+      "type": "object",
+      "required": ["checked-and-none", "checked-with-results", "failed", "unqueried", "unsupported", "stale"],
+      "additionalProperties": false,
+      "properties": {
+        "checked-and-none": { "type": "integer" },
+        "checked-with-results": { "type": "integer" },
+        "failed": { "type": "integer" },
+        "unqueried": { "type": "integer" },
+        "unsupported": { "type": "integer" },
+        "stale": { "type": "integer" }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "ruleId", "title", "actionability", "coverageState", "projectId", "artifact", "occurrence", "advisoryId", "severity", "severitySource", "checkedAt", "evidence", "dependencyPath", "reasons", "v1Ids"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^f_[0-9a-f]{16}$" },
+        "ruleId": { "type": "string", "enum": ["osv-advisory", "osv-lookup-failed", "osv-unqueried", "unsupported-ecosystem", "coverage-gap", "stale-scan", "npm-deprecation", "npm-deprecation-cached", "newer-latest", "unpinned-action"] },
+        "title": { "type": "string" },
+        "actionability": { "type": "string", "enum": ["actionable", "needs-review", "informational"] },
+        "coverageState": { "$ref": "#/$defs/coverageState" },
+        "projectId": { "type": ["string", "null"] },
+        "artifact": { "type": ["object", "null"], "required": ["ecosystem", "name", "version"], "additionalProperties": false, "properties": { "ecosystem": { "type": "string" }, "name": { "type": "string" }, "version": { "type": ["string", "null"] } } },
+        "occurrence": { "type": ["string", "null"], "description": "Install location relative to the project root, or a workflow/file name. Never an absolute path." },
+        "advisoryId": { "type": ["string", "null"] },
+        "severity": { "type": ["string", "null"] },
+        "severitySource": { "type": ["string", "null"], "enum": ["osv", "policy", null] },
+        "checkedAt": { "type": ["string", "null"] },
+        "evidence": { "type": "array", "items": { "type": "object", "required": ["kind", "value"], "additionalProperties": false, "properties": { "kind": { "type": "string", "enum": ["source", "lookup", "snapshot-finding", "reference"] }, "value": { "type": "string" } } } },
+        "dependencyPath": { "type": "array", "items": { "type": "object", "required": ["kind", "label"], "additionalProperties": false, "properties": { "kind": { "type": "string" }, "label": { "type": "string" }, "via": { "type": ["string", "null"] } } } },
+        "reasons": { "type": "array", "items": { "type": "string" } },
+        "v1Ids": { "type": "array", "items": { "type": "string" } },
+        "detail": { "type": ["string", "null"] },
+        "fixedBoundaries": { "type": "array", "items": { "type": "string" } },
+        "latestTag": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

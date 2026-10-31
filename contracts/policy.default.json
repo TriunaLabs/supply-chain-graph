@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "default",
+  "version": "1.0.0",
+  "description": "Reports everything for review and fails nothing. Set gate.failOn (for example [\"actionable\"] or [\"CRITICAL\", \"HIGH\"]) in a private copy to turn it into a gate.",
+  "freshness": { "maxAgeHours": 168 },
+  "rules": {
+    "osv-advisory": { "enabled": true, "actionability": "actionable" },
+    "osv-lookup-failed": { "enabled": true, "actionability": "needs-review" },
+    "osv-unqueried": { "enabled": true, "actionability": "needs-review" },
+    "unsupported-ecosystem": { "enabled": true, "actionability": "needs-review" },
+    "coverage-gap": { "enabled": true, "actionability": "needs-review" },
+    "stale-scan": { "enabled": true, "actionability": "needs-review" },
+    "npm-deprecation": { "enabled": true, "actionability": "actionable" },
+    "npm-deprecation-cached": { "enabled": true, "actionability": "needs-review" },
+    "newer-latest": { "enabled": true, "actionability": "informational" },
+    "unpinned-action": { "enabled": true, "actionability": "actionable", "severity": "medium" }
+  },
+  "gate": { "failOn": [] },
+  "aliases": {}
+}

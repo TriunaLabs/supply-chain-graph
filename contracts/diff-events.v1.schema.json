@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TriunaLabs/supply-chain-graph/contracts/diff-events.v1.schema.json",
+  "title": "Supply Chain Graph diff events v1",
+  "description": "Candidate change events written by `diff`. They are observations between two accepted snapshots, not notifications or policy decisions. `baselineKnown: false` means the earlier snapshot had no successful check to compare against.",
+  "type": "object",
+  "required": ["schemaVersion", "previousAt", "currentAt", "events"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "previousAt": { "type": "string", "format": "date-time" },
+    "currentAt": { "type": "string", "format": "date-time" },
+    "events": { "type": "array", "items": { "$ref": "#/$defs/event" } }
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+        "kind": { "type": "string", "enum": ["finding-opened", "finding-resolved", "package-added", "package-changed", "package-removed", "checkout-changed", "cached-deprecation-observed", "advisory-observed", "advisory-no-longer-returned", "deprecation-observed", "newer-latest-observed"] },
+        "projectId": { "type": "string" },
+        "finding": { "type": "object", "required": ["id", "projectId", "type"] },
+        "name": { "type": "string" },
+        "version": { "type": ["string", "null"] },
+        "from": { "type": ["string", "null"] },
+        "to": { "type": ["string", "null"] },
+        "evidence": { "type": "string" },
+        "artifactId": { "type": "string" },
+        "impactedProjects": { "type": "array", "items": { "type": "string" } },
+        "advisoryId": { "type": "string" },
+        "message": { "type": "string" },
+        "latestTag": { "type": ["string", "null"] },
+        "source": { "type": "string" },
+        "checkedAt": { "type": ["string", "null"] },
+        "baselineKnown": { "type": "boolean" }
+      }
+    }
+  }
+}

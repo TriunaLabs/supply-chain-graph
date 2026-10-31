@@ -11,7 +11,7 @@ const command = args.shift();
 const option = (name) => { const i = args.indexOf(`--${name}`); return i < 0 ? null : args[i + 1]; };
 const options = (name) => args.flatMap((value, index) => value === `--${name}` && args[index + 1] ? [args[index + 1]] : []);
 const help = () => {
-  console.error('Usage: supply-chain.mjs init --out FILE | discover --search-root DIR [--search-root DIR] [--config FILE] --out FILE [--depth 0..8] [--max-directories N] | adopt-discovery --config FILE --discovery FILE --out FILE [--nested-locks] | set-root --config FILE --id ID --root DIR --out FILE [--label NAME] | scan --config FILE --out FILE | enrich --snapshot FILE --out FILE [--project ID] | advisory-details --snapshot FILE --out FILE | render --snapshot FILE --out FILE | diff --previous FILE --current FILE --out FILE | serve --config FILE --snapshot FILE --out HTML [--state FILE] [--port N]. Use --out - for stdout except serve.');
+  console.error('Usage: supply-chain.mjs init --out FILE | discover --search-root DIR [--search-root DIR] [--config FILE] --out FILE [--depth 0..8] [--max-directories N] | adopt-discovery --config FILE --discovery FILE --out FILE [--nested-locks] | set-root --config FILE --id ID --root DIR --out FILE [--label NAME] | scan --config FILE --out FILE | enrich --snapshot FILE --out FILE [--project ID] | advisory-details --snapshot FILE --out FILE | render --snapshot FILE --out FILE | diff --previous FILE --current FILE --out FILE | validate --schema NAME --file FILE | evaluate --snapshot FILE --policy FILE --out FILE [--at ISO-TIME] [--previous RESULT] | serve --config FILE --snapshot FILE --out HTML [--state FILE] [--port N]. Use --out - for stdout except serve. Exit codes: 1 tool or input failure, 2 usage, 3 policy gate failed.');
   process.exitCode = 2;
 };
 const json = async (file) => JSON.parse(await readFile(resolve(file), 'utf8'));
@@ -471,6 +471,31 @@ try {
     console.error(`OSV advisory details: ${records.filter(record => record.status === 'checked').length} checked, ${records.filter(record => record.status === 'error').length} failed.`);
   }
   else if (command === 'diff' && option('previous') && option('current') && option('out')) await output(option('out'), JSON.stringify(diff(await json(option('previous')), await json(option('current'))), null, 2) + '\n');
+  else if (command === 'validate' && option('schema') && option('file')) {
+    const { validateNamed } = await import('./schema.mjs');
+    const result = await validateNamed(option('schema'), await json(option('file')));
+    if (!result.valid) {
+      for (const problem of result.errors.slice(0, 50)) console.error(`${problem.path}: ${problem.message}`);
+      throw new Error(`${option('file')} is not a valid ${option('schema')} document (${result.errors.length} problem${result.errors.length === 1 ? '' : 's'})`);
+    }
+    console.error(`Valid ${option('schema')} v1 document`);
+  }
+  else if (command === 'evaluate' && option('snapshot') && option('policy') && option('out')) {
+    const { validateNamed } = await import('./schema.mjs');
+    const { evaluate } = await import('./policy.mjs');
+    const snapshot = await json(option('snapshot')), policy = await json(option('policy'));
+    for (const [name, document] of [['snapshot', snapshot], ['policy', policy]]) {
+      const check = await validateNamed(name, document);
+      if (!check.valid) { for (const problem of check.errors.slice(0, 20)) console.error(`${name}${problem.path}: ${problem.message}`); throw new Error(`Refusing to evaluate: the ${name} does not match its v1 contract`); }
+    }
+    const previous = option('previous') ? await json(option('previous')) : null;
+    const result = evaluate(snapshot, policy, { now: option('at'), previous });
+    const self = await validateNamed('policy-result', result);
+    if (!self.valid) throw new Error(`Internal error: policy result does not match its contract (${self.errors.map(problem => `${problem.path}: ${problem.message}`).slice(0, 5).join('; ')})`);
+    await output(option('out'), JSON.stringify(result, null, 2) + '\n');
+    console.error(`Policy ${result.policy.id}@${result.policy.version}: ${result.summary.findings} findings (${result.summary.actionable} actionable, ${result.summary.needsReview} need review, ${result.summary.informational} informational) · scan ${result.freshness.state} · gate ${result.gate.status}${result.transitions ? ` · ${result.transitions.length} transitions` : ''}`);
+    if (result.gate.status === 'fail') { console.error(`Gate failed on ${result.gate.failing.length} finding${result.gate.failing.length === 1 ? '' : 's'} (failOn: ${result.gate.failOn.join(', ')})`); process.exitCode = 3; }
+  }
   else if (command === 'render' && option('snapshot') && option('out')) {
     await output(option('out'), await renderHtml(await json(option('snapshot'))));
   }

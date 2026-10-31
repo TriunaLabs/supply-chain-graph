@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TriunaLabs/supply-chain-graph/contracts/snapshot.v1.schema.json",
+  "title": "Supply Chain Graph snapshot v1",
+  "description": "The JSON written by `scan`, optionally extended by `enrich` and `advisory-details`. Known fields are typed; nodes, edges and records keep additionalProperties open so documented optional evidence already produced by the CLI validates. A missing or failed check is a coverage state, never a clean result.",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "coverage", "nodes", "edges", "findings"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "coverage": { "type": "array", "items": { "$ref": "#/$defs/coverageRecord" } },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+    "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "enrichment": { "$ref": "#/$defs/enrichment" },
+    "discovery": { "$ref": "#/$defs/discovery" }
+  },
+  "$defs": {
+    "status": { "type": "string", "minLength": 1 },
+    "coverageRecord": {
+      "type": "object",
+      "required": ["projectId", "npm", "git", "actions", "python"],
+      "properties": {
+        "projectId": { "type": "string", "minLength": 1 },
+        "npm": { "$ref": "#/$defs/status" },
+        "source": { "$ref": "#/$defs/status" },
+        "git": { "$ref": "#/$defs/status" },
+        "actions": { "$ref": "#/$defs/status" },
+        "python": { "$ref": "#/$defs/status" },
+        "sourceFiles": { "type": "integer", "minimum": 0 },
+        "sourceImports": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "kind", "label"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["project", "declaration", "occurrence", "artifact", "repository", "checkout", "action", "source-file", "source-import", "workspace"] },
+        "label": { "type": "string" },
+        "projectId": { "type": "string" },
+        "name": { "type": "string" },
+        "version": { "type": ["string", "null"] },
+        "requested": { "type": ["string", "null"] },
+        "ecosystem": { "type": "string" },
+        "location": { "type": "string" },
+        "sourceKind": { "type": "string" },
+        "integrity": { "type": ["string", "null"] },
+        "localDeprecation": { "type": ["string", "null"] },
+        "rootPath": { "type": ["string", "null"] },
+        "sourceStatus": { "type": "string" },
+        "reference": { "type": "string" },
+        "pinned": { "type": "boolean" },
+        "commit": { "type": "string" },
+        "branch": { "type": ["string", "null"] },
+        "origin": { "type": ["string", "null"] },
+        "upstream": { "type": ["string", "null"] },
+        "ahead": { "type": ["integer", "null"] },
+        "behind": { "type": ["integer", "null"] },
+        "upstreamIsCached": { "type": "boolean" },
+        "repoRoot": { "type": ["string", "null"] },
+        "rootIsRepoSubdirectory": { "type": "boolean" },
+        "mappedUrl": { "type": ["string", "null"] },
+        "versionHint": { "type": ["string", "null"] }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["from", "to", "kind"],
+      "properties": {
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["declares", "resolved-by", "resolves-to", "depends-on", "sourced-from", "uses-action", "checked-out-at", "tracks", "submodule", "contains-workspace", "has-source-imports", "imports-local", "imports-external", "imports-unresolved"] },
+        "scope": { "type": ["string", "null"] },
+        "requested": { "type": ["string", "null"] },
+        "source": { "type": "string" },
+        "mappedUrl": { "type": ["string", "null"] }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "projectId", "type", "severity", "title", "evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "projectId": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "severity": { "const": "coverage" },
+        "title": { "type": "string" },
+        "evidence": { "type": "string" },
+        "detail": { "type": ["string", "null"] }
+      }
+    },
+    "lookup": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["checked", "error", "unavailable"] },
+        "checkedAt": { "type": "string", "format": "date-time" },
+        "reason": { "type": "string" },
+        "advisories": { "type": "array", "items": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string", "minLength": 1 }, "modified": { "type": ["string", "null"] } } } },
+        "latestTag": { "type": ["string", "null"] },
+        "newerLatestTag": { "type": ["boolean", "null"] },
+        "deprecated": { "type": ["string", "null"] }
+      }
+    },
+    "advisoryDetail": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["checked", "error"] },
+        "modified": { "type": ["string", "null"] },
+        "checkedAt": { "type": "string", "format": "date-time" },
+        "summary": { "type": ["string", "null"] },
+        "severity": { "type": ["string", "null"] },
+        "reason": { "type": "string" },
+        "affected": { "type": "array", "items": { "type": "object", "properties": { "ecosystem": { "type": "string" }, "name": { "type": "string" }, "severity": { "type": ["string", "null"] }, "fixedBoundaries": { "type": "array", "items": { "type": "string" } } } } }
+      }
+    },
+    "enrichment": {
+      "type": "object",
+      "required": ["packages"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "attemptedAt": { "type": "string", "format": "date-time" },
+        "packages": { "type": "object", "additionalProperties": { "type": "object", "properties": { "osv": { "$ref": "#/$defs/lookup" }, "registry": { "$ref": "#/$defs/lookup" } } } },
+        "advisories": { "type": "object", "additionalProperties": { "$ref": "#/$defs/advisoryDetail" } }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "required": ["candidates"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "searchRoots": { "type": "array", "items": { "type": "string" } },
+        "directoriesVisited": { "type": "integer", "minimum": 0 },
+        "truncated": { "type": "boolean" },
+        "incomplete": { "type": "boolean" },
+        "unreadableDirectories": { "type": "array", "items": { "type": "object", "required": ["path"], "properties": { "path": { "type": "string" }, "reason": { "type": "string" } } } },
+        "candidates": { "type": "array", "items": { "type": "object", "required": ["path", "status"], "properties": { "path": { "type": "string" }, "label": { "type": "string" }, "git": { "type": "boolean" }, "manifests": { "type": "array", "items": { "type": "string" } }, "status": { "type": "string", "enum": ["configured", "nested-unscanned", "nested-in-unlisted-repo", "unlisted"] }, "projectId": { "type": ["string", "null"] }, "parentRepo": { "type": ["string", "null"] }, "suggestedId": { "type": "string" }, "action": { "type": "string" } } } }
+      }
+    }
+  }
+}

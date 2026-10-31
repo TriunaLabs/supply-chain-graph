@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-30T12:00:00.000Z",
+  "coverage": [
+    { "projectId": "web-app", "npm": "resolved-v3", "source": "scanned", "git": "cached-upstream", "actions": "1 workflow uses", "python": "1 requirements", "sourceFiles": 4, "sourceImports": 6 },
+    { "projectId": "unlocked-tool", "npm": "manifest-only", "source": "not-found", "git": "local-head-only", "actions": "not-found", "python": "not-found", "sourceFiles": 0, "sourceImports": 0 }
+  ],
+  "nodes": [
+    { "id": "project:web-app", "kind": "project", "label": "Web App", "projectId": "web-app", "rootPath": "/portfolio/web-app", "sourceStatus": "Local directory scanned" },
+    { "id": "project:unlocked-tool", "kind": "project", "label": "Unlocked Tool", "projectId": "unlocked-tool", "rootPath": "/portfolio/unlocked-tool", "sourceStatus": "Local directory scanned" },
+    { "id": "checkout:web-app", "kind": "checkout", "label": "main", "projectId": "web-app", "commit": "0123456789abcdef0123456789abcdef01234567", "branch": "main", "origin": "example/web-app", "upstream": "origin/main", "ahead": 0, "behind": 0, "upstreamIsCached": true, "repoRoot": "/portfolio/web-app", "rootIsRepoSubdirectory": false },
+    { "id": "github:example/web-app", "kind": "repository", "label": "example/web-app" },
+    { "id": "action:actions/checkout@v4", "kind": "action", "label": "actions/checkout@v4", "reference": "v4", "pinned": false },
+    { "id": "github:actions/checkout", "kind": "repository", "label": "actions/checkout" },
+    { "id": "decl:js:web-app:root:runtime:vulnerable-lib", "kind": "declaration", "label": "vulnerable-lib ^1.0.0", "name": "vulnerable-lib", "requested": "^1.0.0", "ecosystem": "JavaScript", "projectId": "web-app" },
+    { "id": "decl:js:web-app:root:runtime:clean-lib", "kind": "declaration", "label": "clean-lib ^2.0.0", "name": "clean-lib", "requested": "^2.0.0", "ecosystem": "JavaScript", "projectId": "web-app" },
+    { "id": "decl:js:web-app:root:development:old-tool", "kind": "declaration", "label": "old-tool ^3.0.0", "name": "old-tool", "requested": "^3.0.0", "ecosystem": "JavaScript", "projectId": "web-app" },
+    { "id": "occ:web-app:node_modules/vulnerable-lib", "kind": "occurrence", "label": "vulnerable-lib@1.0.2", "name": "vulnerable-lib", "version": "1.0.2", "projectId": "web-app", "location": "node_modules/vulnerable-lib", "sourceKind": "registry-or-tarball", "integrity": "sha512-synthetic", "localDeprecation": null },
+    { "id": "occ:web-app:node_modules/clean-lib", "kind": "occurrence", "label": "clean-lib@2.1.0", "name": "clean-lib", "version": "2.1.0", "projectId": "web-app", "location": "node_modules/clean-lib", "sourceKind": "registry-or-tarball", "integrity": "sha512-synthetic", "localDeprecation": null },
+    { "id": "occ:web-app:node_modules/old-tool", "kind": "occurrence", "label": "old-tool@3.0.1", "name": "old-tool", "version": "3.0.1", "projectId": "web-app", "location": "node_modules/old-tool", "sourceKind": "registry-or-tarball", "integrity": "sha512-synthetic", "localDeprecation": "Demo fixture: use new-tool" },
+    { "id": "occ:web-app:node_modules/flaky-lib", "kind": "occurrence", "label": "flaky-lib@0.9.0", "name": "flaky-lib", "version": "0.9.0", "projectId": "web-app", "location": "node_modules/flaky-lib", "sourceKind": "registry-or-tarball", "integrity": "sha512-synthetic", "localDeprecation": null },
+    { "id": "occ:web-app:node_modules/legacy-helper", "kind": "occurrence", "label": "legacy-helper@4.2.0", "name": "legacy-helper", "version": "4.2.0", "projectId": "web-app", "location": "node_modules/legacy-helper", "sourceKind": "registry-or-tarball", "integrity": "sha512-synthetic", "localDeprecation": "Demo fixture: cached message" },
+    { "id": "npm:vulnerable-lib@1.0.2", "kind": "artifact", "label": "vulnerable-lib@1.0.2", "name": "vulnerable-lib", "version": "1.0.2", "ecosystem": "npm", "localDeprecation": null },
+    { "id": "npm:clean-lib@2.1.0", "kind": "artifact", "label": "clean-lib@2.1.0", "name": "clean-lib", "version": "2.1.0", "ecosystem": "npm", "localDeprecation": null },
+    { "id": "npm:old-tool@3.0.1", "kind": "artifact", "label": "old-tool@3.0.1", "name": "old-tool", "version": "3.0.1", "ecosystem": "npm", "localDeprecation": "Demo fixture: use new-tool" },
+    { "id": "npm:flaky-lib@0.9.0", "kind": "artifact", "label": "flaky-lib@0.9.0", "name": "flaky-lib", "version": "0.9.0", "ecosystem": "npm", "localDeprecation": null },
+    { "id": "npm:legacy-helper@4.2.0", "kind": "artifact", "label": "legacy-helper@4.2.0", "name": "legacy-helper", "version": "4.2.0", "ecosystem": "npm", "localDeprecation": "Demo fixture: cached message" },
+    { "id": "pypi:requests@2.32.0", "kind": "artifact", "label": "requests@2.32.0", "name": "requests", "version": "2.32.0", "requested": "requests==2.32.0", "ecosystem": "PyPI", "projectId": "web-app" },
+    { "id": "decl:js:unlocked-tool:root:runtime:unlocked-dep", "kind": "declaration", "label": "unlocked-dep ^1.0.0", "name": "unlocked-dep", "requested": "^1.0.0", "ecosystem": "JavaScript", "projectId": "unlocked-tool" }
+  ],
+  "edges": [
+    { "from": "project:web-app", "to": "checkout:web-app", "kind": "checked-out-at", "source": "local-git" },
+    { "from": "checkout:web-app", "to": "github:example/web-app", "kind": "tracks", "source": "local-git" },
+    { "from": "project:web-app", "to": "action:actions/checkout@v4", "kind": "uses-action", "source": ".github/workflows/ci.yml" },
+    { "from": "action:actions/checkout@v4", "to": "github:actions/checkout", "kind": "sourced-from", "source": ".github/workflows/ci.yml" },
+    { "from": "project:web-app", "to": "decl:js:web-app:root:runtime:vulnerable-lib", "kind": "declares", "scope": "runtime", "source": "package.json" },
+    { "from": "project:web-app", "to": "decl:js:web-app:root:runtime:clean-lib", "kind": "declares", "scope": "runtime", "source": "package.json" },
+    { "from": "project:web-app", "to": "decl:js:web-app:root:development:old-tool", "kind": "declares", "scope": "development", "source": "package.json" },
+    { "from": "decl:js:web-app:root:runtime:vulnerable-lib", "to": "occ:web-app:node_modules/vulnerable-lib", "kind": "resolved-by", "scope": "runtime", "source": "package-lock.json" },
+    { "from": "decl:js:web-app:root:runtime:clean-lib", "to": "occ:web-app:node_modules/clean-lib", "kind": "resolved-by", "scope": "runtime", "source": "package-lock.json" },
+    { "from": "decl:js:web-app:root:development:old-tool", "to": "occ:web-app:node_modules/old-tool", "kind": "resolved-by", "scope": "development", "source": "package-lock.json" },
+    { "from": "project:web-app", "to": "occ:web-app:node_modules/vulnerable-lib", "kind": "depends-on", "scope": "runtime", "requested": "^1.0.0", "source": "package.json + package-lock.json" },
+    { "from": "project:web-app", "to": "occ:web-app:node_modules/clean-lib", "kind": "depends-on", "scope": "runtime", "requested": "^2.0.0", "source": "package.json + package-lock.json" },
+    { "from": "project:web-app", "to": "occ:web-app:node_modules/old-tool", "kind": "depends-on", "scope": "development", "requested": "^3.0.0", "source": "package.json + package-lock.json" },
+    { "from": "occ:web-app:node_modules/vulnerable-lib", "to": "occ:web-app:node_modules/flaky-lib", "kind": "depends-on", "scope": "runtime", "requested": "^0.9.0", "source": "package-lock.json" },
+    { "from": "occ:web-app:node_modules/clean-lib", "to": "occ:web-app:node_modules/legacy-helper", "kind": "depends-on", "scope": "runtime", "requested": "^4.0.0", "source": "package-lock.json" },
+    { "from": "occ:web-app:node_modules/vulnerable-lib", "to": "npm:vulnerable-lib@1.0.2", "kind": "resolves-to", "source": "package-lock.json" },
+    { "from": "occ:web-app:node_modules/clean-lib", "to": "npm:clean-lib@2.1.0", "kind": "resolves-to", "source": "package-lock.json" },
+    { "from": "occ:web-app:node_modules/old-tool", "to": "npm:old-tool@3.0.1", "kind": "resolves-to", "source": "package-lock.json" },
+    { "from": "occ:web-app:node_modules/flaky-lib", "to": "npm:flaky-lib@0.9.0", "kind": "resolves-to", "source": "package-lock.json" },
+    { "from": "occ:web-app:node_modules/legacy-helper", "to": "npm:legacy-helper@4.2.0", "kind": "resolves-to", "source": "package-lock.json" },
+    { "from": "project:web-app", "to": "pypi:requests@2.32.0", "kind": "depends-on", "scope": "runtime", "source": "requirements.txt" },
+    { "from": "project:unlocked-tool", "to": "decl:js:unlocked-tool:root:runtime:unlocked-dep", "kind": "declares", "scope": "runtime", "source": "package.json" }
+  ],
+  "findings": [
+    { "id": "missing-lock:unlocked-tool", "projectId": "unlocked-tool", "type": "missing-lockfile", "severity": "coverage", "title": "1 declared JavaScript dependencies have no root lockfile", "evidence": "package.json", "detail": "Resolved versions are unknown until a supported lockfile exists." }
+  ],
+  "enrichment": {
+    "schemaVersion": 1,
+    "attemptedAt": "2026-10-30T12:05:00.000Z",
+    "packages": {
+      "npm:vulnerable-lib@1.0.2": {
+        "osv": { "status": "checked", "checkedAt": "2026-10-30T12:05:00.000Z", "advisories": [{ "id": "GHSA-xxxx-synthetic-0001", "modified": "2026-10-01T00:00:00Z" }] },
+        "registry": { "status": "checked", "checkedAt": "2026-10-30T12:05:00.000Z", "latestTag": "1.0.2", "newerLatestTag": false, "deprecated": null }
+      },
+      "npm:clean-lib@2.1.0": {
+        "osv": { "status": "checked", "checkedAt": "2026-10-30T12:05:00.000Z", "advisories": [] },
+        "registry": { "status": "checked", "checkedAt": "2026-10-30T12:05:00.000Z", "latestTag": "2.4.0", "newerLatestTag": true, "deprecated": null }
+      },
+      "npm:old-tool@3.0.1": {
+        "osv": { "status": "checked", "checkedAt": "2026-10-30T12:05:00.000Z", "advisories": [] },
+        "registry": { "status": "checked", "checkedAt": "2026-10-30T12:05:00.000Z", "latestTag": "3.0.1", "newerLatestTag": false, "deprecated": "Demo fixture: use new-tool" }
+      },
+      "npm:flaky-lib@0.9.0": {
+        "osv": { "status": "error", "checkedAt": "2026-10-30T12:05:00.000Z", "reason": "HTTP 503" },
+        "registry": { "status": "error", "checkedAt": "2026-10-30T12:05:00.000Z", "reason": "HTTP 503" }
+      }
+    },
+    "advisories": {
+      "GHSA-xxxx-synthetic-0001": {
+        "status": "checked",
+        "modified": "2026-10-01T00:00:00Z",
+        "checkedAt": "2026-10-30T12:06:00.000Z",
+        "summary": "Synthetic advisory: crafted input causes unbounded recursion in vulnerable-lib.",
+        "severity": "HIGH",
+        "affected": [{ "ecosystem": "npm", "name": "vulnerable-lib", "severity": "HIGH", "fixedBoundaries": ["1.0.3"] }]
+      }
+    }
+  }
+}
