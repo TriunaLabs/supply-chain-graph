@@ -376,13 +376,99 @@ function renderFindings() {
     list.append(button);
   }
 }
+function lookupSummary() {
+  let osvChecked = 0, registryChecked = 0, failed = 0, localDeprecated = 0;
+  for (const artifact of npmArtifacts) {
+    const checks = checksFor(artifact);
+    if (checks.osv?.status === 'checked') osvChecked++;
+    if (checks.registry?.status === 'checked') registryChecked++;
+    if (localDeprecationFor(artifact)) localDeprecated++;
+    if (checks.osv?.status === 'error' || checks.registry?.status === 'error') failed++;
+  }
+  return { osvChecked, registryChecked, failed, localDeprecated, total: npmArtifacts.length, other: otherArtifacts.length, otherEcosystems: [...new Set(otherArtifacts.map(node => node.ecosystem))] };
+}
+function showWelcome(viewMessage) {
+  const panel = $('inspector'); panel.replaceChildren();
+  const box = document.createElement('div'); box.className = 'welcome'; panel.append(box);
+  const add = (tag, text, className) => { const element = document.createElement(tag); if (text != null) element.textContent = text; if (className) element.className = className; box.append(element); return element; };
+  const configured = projects.filter(project => project.rootPath).length;
+  add('div', 'START HERE', 'entity-type');
+  add('div', configured ? `${configured} project${configured === 1 ? '' : 's'} scanned. Follow a dependency, or add more.` : 'No project folder is configured yet.', 'entity-name');
+  add('p', 'Pick a project in Scope, then select any box or line in the graph for its version, source file, and suggested next step. Click blank graph space to come back here.');
+  const actions = add('div', null, 'action-row');
+  const addButton = document.createElement('button'); addButton.type = 'button'; addButton.className = 'action-button'; addButton.textContent = 'Add project folder';
+  addButton.addEventListener('click', () => rootEditor());
+  const discoverButton = document.createElement('button'); discoverButton.type = 'button'; discoverButton.className = 'action-button'; discoverButton.textContent = 'Discover projects under a parent folder';
+  discoverButton.addEventListener('click', () => discoverFlow());
+  actions.append(addButton, discoverButton);
+  add('p', localService ? 'Add one folder, or choose a parent folder and let discovery list every repository and manifest under it for review. Nothing is added until you confirm.' : 'This saved page is read-only. Start the local editing mode to add folders from here; the command is shown when you click either button.');
+  add('h4', 'What the scan reads');
+  const reads = add('ul');
+  for (const item of ['package.json with package-lock.json v2/v3 or pnpm-lock.yaml v9: declared ranges and the exact versions they resolved to, direct and transitive.', 'JavaScript and TypeScript source files: literal import, export from, import() and require() specifiers, plus import maps in root HTML. Observed use, not proof of an installed package.', 'GitHub Actions workflows, Git submodules, requirements.txt, and the local Git checkout (branch, origin, cached upstream). Live GitHub is never queried.']) { const li = document.createElement('li'); li.textContent = item; reads.append(li); }
+  add('h4', 'Everything stays on this machine');
+  add('p', `The scan reads only the folders you choose. It does not install packages, run package scripts, fetch Git remotes, or send anything anywhere.${localService ? ' This editing server listens on 127.0.0.1 only and needs its session link.' : ''} Snapshots and this page contain absolute folder paths, so keep real ones private.`);
+  add('h4', 'What the npm checks mean here');
+  const summary = lookupSummary();
+  const checks = add('ul');
+  const lines = [
+    summary.osvChecked ? `OSV advisories checked for ${summary.osvChecked} of ${summary.total} npm package versions; the rest are unknown.` : `No advisory lookup has run for this snapshot: all ${summary.total} npm package versions are Advisory unknown. Unknown is not clean.`,
+    summary.registryChecked ? `npm registry metadata checked for ${summary.registryChecked} of ${summary.total}.` : 'npm registry metadata (deprecation, newer latest tag) has not been checked.',
+    summary.localDeprecated ? `${summary.localDeprecated} deprecation message${summary.localDeprecated === 1 ? ' comes' : 's come'} from the lockfile and ${summary.localDeprecated === 1 ? 'is' : 'are'} cached until a registry check confirms.` : null,
+    summary.failed ? `${summary.failed} lookup${summary.failed === 1 ? '' : 's'} failed and stay unknown.` : null,
+    summary.other ? `${summary.other} ${summary.otherEcosystems.join('/')} package version${summary.other === 1 ? '' : 's'} cannot be checked by this starter at all.` : null,
+    'To add lookups, run enrich from the command line. It sends npm package names and versions to OSV and names to the npm registry, nothing else; decide first whether those names are private.'
+  ].filter(Boolean);
+  for (const line of lines) { const li = document.createElement('li'); li.textContent = line; checks.append(li); }
+  if (viewMessage) add('p', viewMessage, 'view-message');
+}
+function discoverFlow() {
+  const panel = $('inspector'); panel.replaceChildren();
+  const title = document.createElement('div'); title.className = 'entity-name'; title.textContent = 'Discover projects under a parent folder'; panel.append(title);
+  const note = document.createElement('p');
+  if (!localService) {
+    note.textContent = 'Discovery runs in the local editing mode. Start it, open the localhost link it prints, then choose a parent folder here; or run the discover command directly.'; panel.append(note);
+    const code = document.createElement('code'); code.textContent = 'node scripts/supply-chain.mjs serve --config PRIVATE_CONFIG --snapshot PRIVATE_SNAPSHOT --out PRIVATE_DASHBOARD\nnode scripts/supply-chain.mjs discover --config PRIVATE_CONFIG --search-root ABSOLUTE_PARENT --out PRIVATE_DISCOVERY'; panel.append(code);
+    return;
+  }
+  note.textContent = 'Choose a folder that contains your projects. Discovery walks it up to 3 levels deep and 10,000 directories, skipping node_modules, build output and hidden folders, and lists every repository and manifest it finds in Roots to review. Nothing is added to the portfolio until you choose.'; panel.append(note);
+  const form = document.createElement('form'); form.className = 'root-form';
+  const wrapper = document.createElement('label'); wrapper.textContent = 'Absolute parent folder';
+  const input = document.createElement('input'); input.name = 'searchRoot'; input.required = true; wrapper.append(input); form.append(wrapper);
+  const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'action-button'; pick.textContent = 'Choose parent folder…';
+  const status = document.createElement('p'); status.setAttribute('role', 'status'); status.textContent = 'Opens a folder dialog on this machine. The search starts only when you click Discover.';
+  const submit = document.createElement('button'); submit.type = 'submit'; submit.textContent = 'Discover';
+  pick.addEventListener('click', async () => {
+    pick.disabled = true; status.textContent = 'Waiting for the folder dialog on this machine…';
+    try {
+      const response = await fetch('/api/pick-folder', { method: 'POST', headers: { 'content-type': 'application/json', 'x-supply-chain-token': localService.token }, body: '{}' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'The folder dialog failed');
+      if (result.cancelled) { status.textContent = 'No folder chosen.'; return; }
+      input.value = result.path; status.textContent = `Parent folder: ${result.path}. Click Discover to search it.`;
+    } catch (error) { status.textContent = error.message; }
+    finally { pick.disabled = false; }
+  });
+  form.addEventListener('submit', async event => {
+    event.preventDefault(); submit.disabled = true; status.textContent = 'Searching the parent folder and rescanning…';
+    try {
+      const response = await fetch('/api/discover', { method: 'POST', headers: { 'content-type': 'application/json', 'x-supply-chain-token': localService.token }, body: JSON.stringify({ searchRoot: input.value.trim() }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Discovery failed');
+      status.textContent = `Found ${result.discovery?.candidates ?? 0} candidates (${result.discovery?.unlisted ?? 0} unlisted). Reloading…`; location.reload();
+    } catch (error) { status.textContent = error.message; submit.disabled = false; }
+  });
+  form.append(pick, status, submit); panel.append(form);
+}
 function renderDiscovery() {
   const body = $('discovery'); body.replaceChildren();
   const report = snapshot.discovery;
-  if (!report) { $('discovery-note').textContent = 'Not run'; return; }
+  $('adopt-all').hidden = true;
+  if (!report) { $('discovery-note').textContent = localService ? 'Not run yet · choose a parent folder to search' : 'Not run'; return; }
   const candidates = report.candidates.filter(candidate => candidate.status !== 'configured');
   candidates.sort((a, b) => (a.status === 'unlisted' ? 0 : 1) - (b.status === 'unlisted' ? 0 : 1) || a.path.localeCompare(b.path));
-  $('discovery-note').textContent = `${candidates.filter(candidate => candidate.status === 'unlisted').length} unlisted roots · ${candidates.length - candidates.filter(candidate => candidate.status === 'unlisted').length} nested sources${report.truncated ? ' · incomplete search' : ''}`;
+  const unlisted = candidates.filter(candidate => candidate.status === 'unlisted').length;
+  $('discovery-note').textContent = `${unlisted} unlisted roots · ${candidates.length - unlisted} nested sources · ${(report.searchRoots || []).length} parent folder${(report.searchRoots || []).length === 1 ? '' : 's'} searched${report.truncated ? ' · incomplete search' : ''}`;
+  if (localService && unlisted) { $('adopt-all').hidden = false; $('adopt-all').textContent = `Add all ${unlisted} unlisted ${unlisted === 1 ? 'repository' : 'repositories'} and scan`; }
   for (const candidate of candidates) {
     const row = document.createElement('tr');
     for (const value of [candidate.path, [candidate.git ? 'Git repo' : null, ...(candidate.manifests || [])].filter(Boolean).join(' · '), candidate.status === 'unlisted' ? 'Not in portfolio' : candidate.status === 'nested-unscanned' ? `Inside ${candidate.projectId}; review importer coverage` : 'Inside unlisted repo']) {
@@ -619,8 +705,7 @@ function drawGraph(view) {
 function clearGraphSelection() {
   selectedId = null; selectedEdge = null;
   if (currentView) drawGraph(currentView);
-  const panel = $('inspector'); panel.replaceChildren();
-  const p = document.createElement('p'); p.textContent = currentView?.message || 'Select a node or edge to inspect its evidence.'; panel.append(p);
+  showWelcome(currentView?.message || 'Select a node or edge to inspect its evidence.');
 }
 function applyZoom(preserveCenter = false) {
   const stage = $('graph-stage'), svg = $('graph');
@@ -685,7 +770,7 @@ function renderGraph() {
   for (const name of ['js', 'source', 'npm', 'github']) $(`${name}-tab`).setAttribute('aria-selected', String(mode === name));
   drawGraph(view);
   applyZoom();
-  if (!selectedId && !selectedEdge) { const panel = $('inspector'); panel.replaceChildren(); const p = document.createElement('p'); p.textContent = view.message; panel.append(p); }
+  if (!selectedId && !selectedEdge) showWelcome(view.message);
 }
 function renderAll() { renderSignalBar(); renderGraph(); renderInventory(); renderEdgeIndex(); }
 projectSelect.addEventListener('change', () => { graphDetail = projectSelect.value === 'all' ? 'direct' : 'paths'; showAllProjects = false; projectPage = 0; edgePage = 0; selectedId = null; selectedEdge = null; renderAll(); });
@@ -700,6 +785,17 @@ $('search').addEventListener('input', () => { edgePage = 0; selectedId = null; s
 for (const name of ['js', 'source', 'npm', 'github']) $(`${name}-tab`).addEventListener('click', () => { mode = name; edgePage = 0; selectedId = null; selectedEdge = null; renderAll(); });
 for (const name of ['all', 'critical', 'advisory', 'deprecated', 'outdated', 'unknown', 'coverage']) $(`signal-${name}`).addEventListener('click', () => { signalFilter = name; edgePage = 0; if (name !== 'all') { projectSelect.value = 'all'; graphDetail = 'paths'; } else if (projectSelect.value === 'all') graphDetail = 'direct'; if (name !== 'all' && name !== 'coverage') mode = 'npm'; if (name === 'coverage') mode = 'js'; selectedId = null; selectedEdge = null; $('search').value = ''; renderAll(); });
 $('add-project').addEventListener('click', () => { rootEditor(); $('inspector').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); });
+$('discover-projects').addEventListener('click', () => { discoverFlow(); $('inspector').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); });
+$('adopt-all').addEventListener('click', async () => {
+  if (!localService) return;
+  const button = $('adopt-all'); button.disabled = true; const label = button.textContent; button.textContent = 'Adding and scanning…';
+  try {
+    const response = await fetch('/api/adopt-discovery', { method: 'POST', headers: { 'content-type': 'application/json', 'x-supply-chain-token': localService.token }, body: JSON.stringify({ nestedLocks: false }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not add the discovered repositories');
+    button.textContent = `Added ${result.added?.length ?? 0}. Reloading…`; location.reload();
+  } catch (error) { button.textContent = error.message; setTimeout(() => { button.textContent = label; button.disabled = false; }, 4000); }
+});
 $('zoom-out').addEventListener('click', () => changeZoom(1 / 1.25));
 $('zoom-in').addEventListener('click', () => changeZoom(1.25));
 $('zoom-fit').addEventListener('click', () => { fitZoom = true; applyZoom(); });

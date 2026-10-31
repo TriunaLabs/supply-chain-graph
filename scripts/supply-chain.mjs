@@ -478,7 +478,7 @@ try {
     if (option('out') === '-') throw new Error('serve requires an HTML file output path');
     const { createServer } = await import('node:http');
     const { randomBytes } = await import('node:crypto');
-    const { upsertRoot } = await import('./discover.mjs');
+    const { upsertRoot, adoptDiscovery } = await import('./discover.mjs');
     const configFile = resolve(option('config')), snapshotFile = resolve(option('snapshot')), htmlFile = resolve(option('out'));
     const stateFile = resolve(option('state') || resolve(dirname(snapshotFile), 'triage-state.json'));
     const readTriage = async () => {
@@ -494,7 +494,56 @@ try {
       const custom = process.env.SUPPLY_CHAIN_FOLDER_PICKER?.trim();
       if (custom) return custom.startsWith('[') ? JSON.parse(custom) : custom.split(/\s+/);
       if (process.platform === 'win32') {
-        const script = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Add-Type -AssemblyName System.Windows.Forms; $dialog = New-Object System.Windows.Forms.FolderBrowserDialog; $dialog.Description = '${pickerPrompt}'; $dialog.ShowNewFolderButton = $false; if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($dialog.SelectedPath) }`;
+        // A window opened by a background process is not allowed to take the foreground, so the dialog would open behind the browser
+        // with no taskbar button. A timer inside the dialog's own message loop makes it top-most and foreground once it exists.
+        const script = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Windows.Forms
+$native = $null
+try {
+  Add-Type -Namespace SupplyChainGraph -Name Native -MemberDefinition @'
+[DllImport("user32.dll")] public static extern IntPtr GetActiveWindow();
+[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+[StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
+[DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out Rect rect);
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+[DllImport("user32.dll")] public static extern bool AttachThreadInput(uint attachFrom, uint attachTo, bool attach);
+[DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+'@
+  $native = [SupplyChainGraph.Native]
+} catch { $native = $null }
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = '${pickerPrompt}'
+$dialog.RootFolder = [System.Environment+SpecialFolder]::MyComputer
+$dialog.SelectedPath = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
+$dialog.ShowNewFolderButton = $false
+$timer = New-Object System.Windows.Forms.Timer
+$timer.Interval = 200
+$timer.Add_Tick({
+  $handle = $native::GetActiveWindow()
+  if ($handle -eq [IntPtr]::Zero) { return }
+  $timer.Stop()
+  $foreground = $native::GetForegroundWindow()
+  $target = New-Object SupplyChainGraph.Native+Rect
+  $own = New-Object SupplyChainGraph.Native+Rect
+  if ($foreground -ne [IntPtr]::Zero -and $native::GetWindowRect($foreground, [ref]$target) -and $native::GetWindowRect($handle, [ref]$own) -and ($target.Right - $target.Left) -gt 200) {
+    $x = $target.Left + [int](($target.Right - $target.Left) - ($own.Right - $own.Left)) / 2
+    $y = $target.Top + [int](($target.Bottom - $target.Top) - ($own.Bottom - $own.Top)) / 2
+    [void]$native::SetWindowPos($handle, [IntPtr](-1), $x, $y, 0, 0, 0x41)
+  } else {
+    [void]$native::SetWindowPos($handle, [IntPtr](-1), 0, 0, 0, 0, 0x43)
+  }
+  $foregroundPid = [uint32]0
+  $foregroundThread = $native::GetWindowThreadProcessId($foreground, [ref]$foregroundPid)
+  $ownThread = $native::GetCurrentThreadId()
+  if ($foregroundThread -ne $ownThread) { [void]$native::AttachThreadInput($foregroundThread, $ownThread, $true) }
+  [void]$native::SetForegroundWindow($handle)
+  if ($foregroundThread -ne $ownThread) { [void]$native::AttachThreadInput($foregroundThread, $ownThread, $false) }
+})
+if ($native) { $timer.Start() }
+if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($dialog.SelectedPath) }
+$timer.Dispose()`;
         return ['powershell.exe', '-NoProfile', '-NonInteractive', '-STA', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')];
       }
       if (process.platform === 'darwin') return ['osascript', '-e', `POSIX path of (choose folder with prompt "${pickerPrompt}")`];
@@ -503,12 +552,14 @@ try {
     const pickFolder = () => new Promise((done, reject) => {
       const [command, ...argv] = pickerCommand();
       let out = '', err = '';
+      console.error(`Folder dialog: opening ${command} on this machine`);
       const child = spawn(command, argv, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, timeout: 10 * 60 * 1000 });
       child.stdout.on('data', chunk => { out += chunk; });
       child.stderr.on('data', chunk => { err += chunk; });
-      child.once('error', error => reject(new Error(error.code === 'ENOENT' ? `No folder dialog is available on this machine (${command} was not found). Paste the absolute path instead.` : error.message)));
+      child.once('error', error => { console.error(`Folder dialog: could not start (${error.code || error.message})`); reject(new Error(error.code === 'ENOENT' ? `No folder dialog is available on this machine (${command} was not found). Paste the absolute path instead.` : error.message)); });
       child.once('close', code => {
         const chosen = out.trim();
+        console.error(`Folder dialog: closed with code ${code}, ${chosen ? 'a folder was chosen' : 'no folder chosen'}`);
         if (chosen) return done(chosen);
         if (code === 0 || code === 1 || code === null || /cancel/i.test(err)) return done(null);
         reject(new Error(`The folder dialog exited with code ${code}${err.trim() ? `: ${err.trim().slice(0, 200)}` : ''}`));
@@ -532,7 +583,7 @@ try {
         try { return send(200, JSON.stringify(await readTriage())); }
         catch (error) { return send(500, JSON.stringify({ error: error.message })); }
       }
-      if (request.method !== 'POST' || !['/api/set-root', '/api/triage', '/api/open-folder', '/api/pick-folder'].includes(requestUrl.pathname)) return send(404, JSON.stringify({ error: 'Not found' }));
+      if (request.method !== 'POST' || !['/api/set-root', '/api/triage', '/api/open-folder', '/api/pick-folder', '/api/discover', '/api/adopt-discovery'].includes(requestUrl.pathname)) return send(404, JSON.stringify({ error: 'Not found' }));
       if (request.headers['content-type']?.split(';')[0] !== 'application/json') return send(403, JSON.stringify({ error: 'JSON required' }));
       if (requestUrl.pathname === '/api/pick-folder') {
         if (pickerBusy) return send(409, JSON.stringify({ error: 'A folder dialog is already open on this machine' }));
@@ -619,20 +670,39 @@ try {
       try {
         let body = '';
         for await (const chunk of request) { body += chunk; if (body.length > 16384) throw new Error('Request is too large'); }
-        const { id, label, root } = JSON.parse(body);
+        const payload = JSON.parse(body);
+        const prior = await json(snapshotFile).catch(() => null);
+        // Every edit below writes the private config first, then rescans local sources and re-renders; cached enrichment survives for artifacts still present.
+        const saveAndRescan = async (config, extra = {}) => {
+          await output(configFile, JSON.stringify(config, null, 2) + '\n');
+          const next = await scan(configFile);
+          if (prior?.enrichment?.packages) {
+            const ids = new Set(next.nodes.filter(node => node.kind === 'artifact').map(node => node.id));
+            next.enrichment = { ...prior.enrichment, packages: Object.fromEntries(Object.entries(prior.enrichment.packages).filter(([id]) => ids.has(id))) };
+          }
+          await output(snapshotFile, JSON.stringify(next, null, 2) + '\n');
+          await output(htmlFile, await renderHtml(next));
+          return { ok: true, projects: config.projects.length, scannedAt: next.generatedAt, ...extra, discovery: next.discovery ? { candidates: next.discovery.candidates.length, unlisted: next.discovery.candidates.filter(candidate => candidate.status === 'unlisted').length, truncated: next.discovery.truncated } : null };
+        };
+        if (requestUrl.pathname === '/api/discover') {
+          const { searchRoot } = payload;
+          if (typeof searchRoot !== 'string' || !searchRoot.trim() || !isAbsolute(searchRoot)) throw new Error('Choose an absolute parent folder to search');
+          const folder = await realpath(resolve(searchRoot)).catch(() => null);
+          if (!folder || !(await stat(folder).catch(() => null))?.isDirectory()) throw new Error('The parent folder is not an accessible directory');
+          if (folder === parse(folder).root) throw new Error('Choose a parent folder, not a whole drive or filesystem root');
+          const config = await json(configFile);
+          const searchRoots = [...new Set([...(Array.isArray(config.searchRoots) ? config.searchRoots : []), folder])];
+          return send(200, JSON.stringify(await saveAndRescan({ ...config, searchRoots }, { searchRoots: searchRoots.length })));
+        }
+        if (requestUrl.pathname === '/api/adopt-discovery') {
+          if (!prior?.discovery) throw new Error('Run discovery under a parent folder first');
+          const result = adoptDiscovery(await json(configFile), prior.discovery, { nestedLocks: payload.nestedLocks === true, configFile });
+          return send(200, JSON.stringify(await saveAndRescan(result.config, { added: result.added.map(project => project.id) })));
+        }
+        const { id, label, root } = payload;
         const state = await stat(resolve(root)).catch(() => null);
         if (!state?.isDirectory()) throw new Error('Choose an accessible directory');
-        const config = upsertRoot(await json(configFile), { id, label, root });
-        const prior = await json(snapshotFile).catch(() => null);
-        await output(configFile, JSON.stringify(config, null, 2) + '\n');
-        const next = await scan(configFile);
-        if (prior?.enrichment?.packages) {
-          const ids = new Set(next.nodes.filter(node => node.kind === 'artifact').map(node => node.id));
-          next.enrichment = { ...prior.enrichment, packages: Object.fromEntries(Object.entries(prior.enrichment.packages).filter(([id]) => ids.has(id))) };
-        }
-        await output(snapshotFile, JSON.stringify(next, null, 2) + '\n');
-        await output(htmlFile, await renderHtml(next));
-        return send(200, JSON.stringify({ ok: true, projects: config.projects.length, scannedAt: next.generatedAt }));
+        return send(200, JSON.stringify(await saveAndRescan(upsertRoot(await json(configFile), { id, label, root }))));
       } catch (error) { return send(400, JSON.stringify({ error: error.message })); }
       finally { busy = false; }
     });

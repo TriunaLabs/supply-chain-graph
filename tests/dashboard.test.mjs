@@ -25,7 +25,62 @@ async function executeDashboard(snapshot, globals = {}) {
   vm.runInNewContext(`const snapshot = ${JSON.stringify(snapshot)};\n${source}`, { document, console, ...globals });
   return elements;
 }
+const panelParagraphs = elements => elements.get('inspector').children.flatMap(item => [item, ...item.children]).filter(item => item.tag === 'p');
 const minimal = () => ({ generatedAt: '2026-10-31T00:00:00Z', findings: [], coverage: [], enrichment: { packages: {} }, nodes: [{ id: 'project:app', kind: 'project', label: 'App', projectId: 'app', rootPath: '/portfolio/app' }], edges: [] });
+
+test('the empty inspector is a start-here guide with working actions, local caveats, and a discovery flow', async () => {
+  const staticElements = await executeDashboard(minimal());
+  const welcome = () => staticElements.get('inspector').children.find(item => item.className === 'welcome');
+  assert.ok(welcome(), 'guide shows on load');
+  const text = () => welcome().children.map(item => item.textContent + item.children.map(child => child.textContent).join(' ')).join(' ');
+  assert.match(text(), /No advisory lookup has run for this snapshot/);
+  assert.match(text(), /does not install packages, run package scripts, fetch Git remotes, or send anything anywhere/);
+  assert.match(text(), /package-lock\.json v2\/v3 or pnpm-lock\.yaml v9/);
+  const actions = welcome().children.find(item => item.className === 'action-row');
+  const [addButton, discoverButton] = actions.children;
+  assert.equal(addButton.textContent, 'Add project folder');
+  assert.equal(discoverButton.textContent, 'Discover projects under a parent folder');
+  discoverButton.listeners.click();
+  assert.ok(staticElements.get('inspector').children.some(item => item.tag === 'code' && /discover --config PRIVATE_CONFIG --search-root ABSOLUTE_PARENT/.test(item.textContent)));
+  staticElements.get('graph-stage').listeners.click({ target: { closest: () => null } });
+  assert.ok(welcome(), 'clicking blank graph space brings the guide back');
+  addButton.listeners.click();
+  assert.ok(!welcome() && staticElements.get('inspector').children.some(item => item.tag === 'code'));
+  assert.equal(staticElements.get('discovery-note').textContent, 'Not run');
+  assert.equal(staticElements.get('adopt-all').hidden, true);
+
+  const calls = [];
+  const fetch = async (url, init = {}) => {
+    calls.push({ url, body: init.body ? JSON.parse(init.body) : null });
+    if (url === '/api/triage') return { ok: true, status: 200, json: async () => ({ items: {} }) };
+    if (url === '/api/pick-folder') return { ok: true, status: 200, json: async () => ({ path: 'D:\\portfolio', suggestedId: 'portfolio', suggestedLabel: 'portfolio' }) };
+    if (url === '/api/discover') return { ok: true, status: 200, json: async () => ({ ok: true, discovery: { candidates: 3, unlisted: 2, truncated: false } }) };
+    if (url === '/api/adopt-discovery') return { ok: true, status: 200, json: async () => ({ ok: true, added: ['alpha', 'beta'] }) };
+    throw new Error(`unexpected request ${url}`);
+  };
+  const withDiscovery = minimal();
+  withDiscovery.discovery = { searchRoots: ['D:\\portfolio'], truncated: false, candidates: [
+    { path: 'D:\\portfolio\\alpha', label: 'alpha', git: true, manifests: ['package.json'], status: 'unlisted', suggestedId: 'alpha' },
+    { path: 'D:\\portfolio\\beta', label: 'beta', git: true, manifests: [], status: 'unlisted', suggestedId: 'beta' },
+    { path: '/portfolio/app/packages/ui', label: 'ui', git: false, manifests: ['package.json'], status: 'nested-unscanned', projectId: 'app', suggestedId: 'app-ui' }
+  ] };
+  const local = await executeDashboard(withDiscovery, { supplyChainLocal: { token: 'test-token' }, fetch, location: { reload() { calls.push({ url: 'reload' }); } } });
+  assert.match(local.get('discovery-note').textContent, /2 unlisted roots · 1 nested sources · 1 parent folder searched/);
+  assert.equal(local.get('adopt-all').hidden, false);
+  assert.equal(local.get('adopt-all').textContent, 'Add all 2 unlisted repositories and scan');
+  local.get('discover-projects').listeners.click();
+  const form = local.get('inspector').children.find(item => item.className === 'root-form');
+  const input = form.children.find(item => item.tag === 'label').children[0];
+  await form.children.find(item => item.tag === 'button' && item.textContent === 'Choose parent folder…').listeners.click();
+  assert.equal(input.value, 'D:\\portfolio');
+  assert.ok(!calls.some(call => call.url === '/api/discover'), 'picking a parent does not search yet');
+  await form.listeners.submit({ preventDefault() {} });
+  const discoverCall = calls.find(call => call.url === '/api/discover');
+  assert.deepEqual(discoverCall.body, { searchRoot: 'D:\\portfolio' });
+  assert.ok(calls.some(call => call.url === 'reload'));
+  await local.get('adopt-all').listeners.click();
+  assert.deepEqual(calls.find(call => call.url === '/api/adopt-discovery').body, { nestedLocks: false });
+});
 
 test('Add project folder opens the root form; the local picker fills it and waits for Add and scan', async () => {
   const staticElements = await executeDashboard(minimal());
@@ -248,7 +303,7 @@ test('complete direct view shows each project’s own links and background clear
   assert.ok(graph.children.some(item => item.tag === 'g' && item.attributes.class.includes('selected')));
   elements.get('graph-stage').listeners.click({ target: { closest: () => null } });
   assert.ok(!graph.children.some(item => item.tag === 'g' && item.attributes.class.includes('selected')));
-  assert.ok(elements.get('inspector').children.some(item => item.tag === 'p' && item.textContent.includes('every direct')));
+  assert.ok(panelParagraphs(elements).some(item =>item.textContent.includes('every direct')));
   elements.get('graph-detail').value = 'paths'; elements.get('graph-detail').listeners.change();
   assert.match(elements.get('graph-note').textContent, /bounded path view/);
   assert.ok(graph.children.some(item => item.tag === 'path' && item.attributes['aria-label']?.startsWith('B to ')));
@@ -305,10 +360,10 @@ test('non-npm packages, empty source coverage, and nested checkouts are labeled 
   assert.match(elements.get('scope-context').textContent, /enclosing repository; project folder is a subdirectory/);
   elements.get('source-tab').listeners.click();
   assert.equal(graph.children.filter(item => item.tag === 'path').length, 0);
-  assert.ok(elements.get('inspector').children.some(item => item.tag === 'p' && /No JavaScript or TypeScript source files were found under this root \(source coverage: Not found · 0 files\)/.test(item.textContent)));
+  assert.ok(panelParagraphs(elements).some(item =>/No JavaScript or TypeScript source files were found under this root \(source coverage: Not found · 0 files\)/.test(item.textContent)));
   assert.match(elements.get('graph-note').textContent, /no source files found \(coverage, not a clean check\)/);
   elements.get('graph-detail').value = 'direct'; elements.get('graph-detail').listeners.change();
-  assert.ok(elements.get('inspector').children.some(item => item.tag === 'p' && item.textContent.startsWith('No JavaScript or TypeScript source files')));
+  assert.ok(panelParagraphs(elements).some(item =>item.textContent.startsWith('No JavaScript or TypeScript source files')));
   elements.get('github-tab').listeners.click();
   const checkout = graph.children.find(item => item.tag === 'g' && item.attributes['aria-label']?.startsWith('checkout: main'));
   checkout.listeners.click();

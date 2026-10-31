@@ -106,5 +106,38 @@ test('folder picker returns only the chosen directory, validates it, and saves n
     assert.match((await drive.json()).error, /not a whole drive or filesystem root/);
     assert.equal(await readFile(config, 'utf8'), configBefore, 'picking never writes the config');
     assert.equal(JSON.parse(await readFile(snapshot, 'utf8')).nodes.length, 0, 'picking never rescans');
+
+    const parent = join(base, 'Projects');
+    for (const name of ['alpha', 'beta']) { await mkdir(join(parent, name, '.git'), { recursive: true }); await writeFile(join(parent, name, 'package.json'), JSON.stringify({ name })); }
+    await mkdir(join(parent, 'notes'));
+    const post = (path, payload) => fetch(`${origin}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-supply-chain-token': token }, body: JSON.stringify(payload) });
+    const rejected = await post('/api/discover', { searchRoot: parse(base).root });
+    assert.equal(rejected.status, 400);
+    assert.match((await rejected.json()).error, /not a whole drive or filesystem root/);
+    const relative = await post('/api/discover', { searchRoot: 'Projects' });
+    assert.equal(relative.status, 400);
+    const beforeAdopt = await post('/api/adopt-discovery', {});
+    assert.equal(beforeAdopt.status, 400);
+    assert.match((await beforeAdopt.json()).error, /Run discovery under a parent folder first/);
+    const discovered = await post('/api/discover', { searchRoot: parent });
+    const discoveredText = await discovered.text();
+    assert.equal(discovered.status, 200, discoveredText);
+    const discoveredBody = JSON.parse(discoveredText);
+    assert.equal(discoveredBody.discovery.candidates, 2);
+    assert.equal(discoveredBody.discovery.unlisted, 2);
+    const configAfterDiscover = JSON.parse(await readFile(config, 'utf8'));
+    assert.equal(configAfterDiscover.projects.length, 1, 'discovery adds nothing to the project list');
+    assert.equal(configAfterDiscover.searchRoots.length, 1);
+    assert.equal(JSON.parse(await readFile(snapshot, 'utf8')).discovery.candidates.filter(candidate => candidate.status === 'unlisted').length, 2);
+    const adopted = await post('/api/adopt-discovery', { nestedLocks: false });
+    const adoptedText = await adopted.text();
+    assert.equal(adopted.status, 200, adoptedText);
+    assert.deepEqual(JSON.parse(adoptedText).added.sort(), ['alpha', 'beta']);
+    const configAfterAdopt = JSON.parse(await readFile(config, 'utf8'));
+    assert.deepEqual(configAfterAdopt.projects.map(project => project.id).sort(), ['alpha', 'app', 'beta']);
+    const rescanned = JSON.parse(await readFile(snapshot, 'utf8'));
+    assert.equal(rescanned.coverage.length, 3);
+    assert.ok(rescanned.discovery.candidates.every(candidate => candidate.status === 'configured'));
+    assert.match(await readFile(html, 'utf8'), /Supply Chain Graph/);
   } finally { child.kill(); await rm(base, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); }
 });
